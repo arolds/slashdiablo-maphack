@@ -141,7 +141,13 @@ void Colorhook::OnDraw() {
 		D2WIN_DrawText(wText, GetX() + 13, GetY() + 10, InRange(*p_D2CLIENT_MouseX, *p_D2CLIENT_MouseY)?7:4, 0);
 		delete[] wText;
 		D2WIN_SetTextSize(size);
-		Crosshook::Draw(GetX(), GetY() + 4, GetColor());
+		unsigned int boxSize = 10;
+		Boxhook::Draw(GetX(), GetY(), boxSize, boxSize, GetColor(), BTOneHalf);
+		Linehook::Draw(GetX(), GetY(), GetX() + boxSize, GetY(), 0xFF);
+		Linehook::Draw(GetX(), GetY(), GetX(), GetY() + boxSize, 0xFF);
+		Linehook::Draw(GetX(), GetY()+ boxSize, GetX() + boxSize, GetY() + boxSize, 0xFF);
+		Linehook::Draw(GetX()+ boxSize, GetY(), GetX() + boxSize, GetY() + boxSize, 0xFF);
+
 	}
 	Unlock();
 }
