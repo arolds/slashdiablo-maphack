@@ -17,6 +17,7 @@ ModuleManager* BH::moduleManager;
 Config* BH::config;
 Config* BH::itemConfig;
 Drawing::UI* BH::settingsUI;
+vector<Drawing::UITab*> BH::uiTabs;
 Drawing::StatsDisplay* BH::statsDisplay;
 bool BH::initialized;
 bool BH::cGuardLoaded;
