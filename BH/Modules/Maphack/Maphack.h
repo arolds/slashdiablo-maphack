@@ -24,6 +24,7 @@ class Maphack : public Module {
 	private:
 		int monsterResistanceThreshold;
 		int lkLinesColor;
+		ULONGLONG portalTimer;
 		unsigned int revealType;
 		unsigned int maxGhostSelection;
 		unsigned int reloadConfig;
@@ -81,7 +82,7 @@ void Lighting_Interception();
 void Infravision_Interception();
 void __stdcall Shake_Interception(LPDWORD lpX, LPDWORD lpY);
 void HoverObject_Interception();
-void DiabloMessage_Interception();
+void PortalDelay_Interception();
 void DropItemBackdrop_Interception();
 
 void  NPCMessageLoopPatch_ASM();

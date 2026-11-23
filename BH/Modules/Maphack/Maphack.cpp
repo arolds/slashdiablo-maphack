@@ -21,6 +21,7 @@ Patch* lightingPatch = new Patch(Call, D2CLIENT, { 0xA9A37, 0x233A7 }, (int)Ligh
 Patch* infraPatch = new Patch(Call, D2CLIENT, { 0x66623, 0xB4A23 }, (int)Infravision_Interception, 7);
 Patch* shakePatch = new Patch(Call, D2CLIENT, { 0x442A2, 0x452F2 }, (int)Shake_Interception, 5);
 Patch* diabloDeadMessage = new Patch((PatchType)0x68, D2CLIENT, { 0x52E84, 0x693B4 }, (int)0x14, 5);
+Patch* removePortalDelay = new Patch(Call, D2CLIENT, { 0x1AB81, 0x1AB81 }, (int)PortalDelay_Interception, 5);
 Patch* itemDropBackdropPatch = new Patch(Call, D2CLIENT, { 0x59462, 0x59462 }, (int)DropItemBackdrop_Interception, 0x11); //needs 13d offset
 
 Patch* monsterNamePatch = new Patch(Call, D2WIN, { 0x13550, 0x140E0 }, (int)HoverObject_Interception, 5);
@@ -188,6 +189,7 @@ void Maphack::ResetRevealed() {
 }
 
 void Maphack::ResetPatches() {
+	removePortalDelay->Install();
 	//Lighting Patch
 	if (Toggles["Force Light Radius"].state)
 		lightingPatch->Install();
@@ -320,6 +322,8 @@ void Maphack::OnLoad() {
 	options.push_back("Level");
 	new Combohook(settingsTab, 100, Y, 70, &revealType, options);
 
+	//initializing portal variables.
+	portalTimer = GetTickCount64();
 }
 
 void Maphack::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
@@ -344,6 +348,8 @@ void Maphack::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
 }
 
 void Maphack::OnUnload() {
+
+	removePortalDelay->Remove();
 	lightingPatch->Remove();
 	weatherPatch->Remove();
 	infraPatch->Remove();
@@ -372,10 +378,10 @@ void Maphack::OnLoop() {
 			RevealGame();
 		break;
 		case MaphackRevealAct:
-			RevealAct(unit->pAct->dwAct + 1);
+			RevealAct(player->pAct->dwAct + 1);
 		break;
 		case MaphackRevealLevel:
-			RevealLevel(unit->pPath->pRoom1->pRoom2->pLevel);
+			RevealLevel(player->pPath->pRoom1->pRoom2->pLevel);
 		break;
 	}
 }
@@ -592,7 +598,7 @@ void Maphack::OnAutomapDraw() {
 							Drawing::Texthook::Draw(automapLoc.x, automapLoc.y - 8, Drawing::Center, 6, White, immunityText);
 						if (enchantText.length() > 0)
 							Drawing::Texthook::Draw(automapLoc.x, automapLoc.y - 14, Drawing::Center, 6, White, enchantText);
-						Drawing::Crosshook::Draw(automapLoc.x, automapLoc.y, color);
+						Drawing::Xhook::Draw(automapLoc.x, automapLoc.y, color, 2);
 						if (lineColor != -1) {
 							Drawing::Linehook::Draw(MyPos.x, MyPos.y, automapLoc.x, automapLoc.y, lineColor);
 						}
@@ -1269,6 +1275,14 @@ VOID __stdcall Shake_Interception(LPDWORD lpX, LPDWORD lpY)
 	*p_D2CLIENT_xShake = 0;
 	*p_D2CLIENT_yShake = 0;
 
+}
+
+void __declspec(naked) PortalDelay_Interception()
+{
+	__asm {
+		call Maphack::CanUsePortal
+		ret 0x8
+	}
 }
 
 //basically call HoverObjectPatch, if that function returns 0 execute
