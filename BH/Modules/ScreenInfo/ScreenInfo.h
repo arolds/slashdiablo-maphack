@@ -88,15 +88,18 @@ class ScreenInfo : public Module {
 		vector<Buff> activeBuffs;
 		vector<BYTE> buffs;
 		vector<wchar_t*> buffNames;
+		BOOL msgBox;
+		bool devTools;
 	public:
 		static map<std::string, Toggle> Toggles;
 
 		ScreenInfo() :
 			Module("Screen Info"), warningTicks(BHGetTickCount()), packetRequests(0),
 			MephistoBlocked(false), DiabloBlocked(false), BaalBlocked(false), ReceivedQuestPacket(false),
-			startExperience(0), startLevel(0), mpqH(NULL), cf(NULL), cellLoaded(false) {};
+			startExperience(0), startLevel(0), mpqH(NULL), cf(NULL), cellLoaded(false), msgBox(false), devTools(false) {};
 
 		void OnLoad();
+		void OnUnload();
 		void LoadConfig();
 		void MpqLoaded();
 		void OnKey(bool up, BYTE key, LPARAM lParam, bool* block);
@@ -113,6 +116,9 @@ class ScreenInfo : public Module {
 		void WriteRunTrackerData();
 		void DrawPopup(wchar_t* buffName, int x, int y);
 		vector<wstring> strBreakApart(wstring str, wchar_t delimiter);
+		static void __stdcall CustomExpBar(int x1, int y1, int x2, int y2);
+		static void __fastcall CustomExpBarHover(const wchar_t* wStr, int xPos, int yPos, int nColor, int centered);
+
 
 		static void AddDrop(UnitAny* item);
 		static void AddDrop(const string& name, unsigned int x, unsigned int y);
@@ -121,3 +127,5 @@ class ScreenInfo : public Module {
 StateCode GetStateCode(unsigned int nKey);
 StateCode GetStateCode(const char* name);
 long long ExpByLevel[];
+void ExpBar_Interception();
+void ExpBarHover_Interception();

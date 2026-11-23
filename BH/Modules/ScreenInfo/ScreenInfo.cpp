@@ -3,6 +3,7 @@
 #include "../../D2Ptrs.h"
 #include "../../D2Stubs.h"
 #include "../Item/ItemDisplay.h"
+#include "../Item/Item.h"
 #include "../../MPQReader.h"
 #include "../../D2Version.h"
 #include "../../D2Helpers.h"
@@ -12,6 +13,10 @@
 #include <filesystem>
 
 using namespace Drawing;
+Patch* expBarPatch = new Patch(Call, D2CLIENT, { 0x26AF8, 0x26AF8 }, (int)ExpBar_Interception, 0x1B); //needs 13d
+Patch* expBarHoverPatch = new Patch(Call, D2CLIENT, { 0x26A8F, 0x26A8F }, (int)ExpBarHover_Interception, 5); //needs 13d
+Patch* expBarHoverCheckPatch = new Patch(Bytes, D2CLIENT, { 0x26A43+2, 0x26A43+2 }, -0x1E, 1); //needs 13d
+Patch* ZeroXpPatch = new Patch(NOP, D2CLIENT, { 0x26AC9, 0x26AC9 }, 0, 4); //needs 13d
 
 map<std::string, Toggle> ScreenInfo::Toggles;
 
@@ -39,6 +44,11 @@ void ScreenInfo::OnLoad() {
 	d2VersionText->SetColor(White);
 	d2VersionText->SetFont(1);
 
+	expBarPatch->Install();
+	expBarHoverPatch->Install();
+	expBarHoverCheckPatch->Install();
+	ZeroXpPatch->Install();
+
 	if (BH::cGuardLoaded) {
 		Texthook* cGuardText = new Texthook(Perm, 790, 23, "�c4cGuard Loaded");
 		cGuardText->SetAlignment(Right);
@@ -56,6 +66,13 @@ void ScreenInfo::OnLoad() {
 	automap["LASTXPPERSEC"] = szLastXpPerSec;
 	automap["LASTGAMETIME"] = szLastGameTime;
 	automap["SESSIONGAMECOUNT"] = to_string(nTotalGames);
+}
+
+void ScreenInfo::OnUnload() {
+	expBarPatch->Remove();
+	expBarHoverPatch->Remove();
+	expBarHoverCheckPatch->Remove();
+	ZeroXpPatch->Remove();
 }
 
 void ScreenInfo::LoadConfig() {
@@ -231,6 +248,15 @@ string ScreenInfo::FormatTime(time_t t, const char* format) {
 }
 
 void ScreenInfo::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {	
+	//DEV TOOLS
+	//if (key == VK_UP) {
+	//	*block = true;
+	//	if (up) {
+	//		return;
+	//	}
+	//	devTools = !devTools;
+	//}
+
 	for (map<string,Toggle>::iterator it = Toggles.begin(); it != Toggles.end(); it++) {
 		if (key == (*it).second.toggle) {
 			*block = true;
@@ -453,7 +479,7 @@ void ScreenInfo::OnDraw() {
 					activeBuffs.erase(activeBuffs.begin() + pos);
 				}			
 			}
-			manageBuffs = false;			
+			manageBuffs = false;
 		}
 		DWORD mouseX = *p_D2CLIENT_MouseX;
 		DWORD mouseY = *p_D2CLIENT_MouseY;
@@ -522,11 +548,34 @@ void ScreenInfo::OnDraw() {
 	automap["AREALEVEL"] = to_string(areaLevel);
 	aPlayerCountAverage[GetPlayerCount() - 1]++;
 
-	delete [] level;	
+	delete [] level;
+
+	//DEV TOOLS
+	if (devTools) {
+		DWORD mouseX = *p_D2CLIENT_MouseX;
+		DWORD mouseY = *p_D2CLIENT_MouseY;
+		string str = to_string(mouseX) + ", " + to_string(mouseY);
+		wchar_t* wStr = AnsiToUnicode(str.c_str());
+		D2WIN_DrawFramedText(wStr, mouseX, mouseY - 2, 0, 1);
+		delete[] wStr;
+
+		int screenX = *p_D2CLIENT_ScreenSizeX;
+		int screenY = *p_D2CLIENT_ScreenSizeY;
+		D2WIN_DrawFramedText(L"Testing!!", 2, screenY - 2, 0, 1);
+	}
 	
 }
-
 void ScreenInfo::OnOOGDraw() {
+	//if (!msgBox) {
+	//	MessageBox(
+	//		NULL, // Handle to the owner window (NULL for no owner)
+	//		"This is the message text.", // Message text (wide-character string)
+	//		"This is the title bar text.", // Title bar text (wide-character string)
+	//		MB_OK | MB_ICONINFORMATION // Style flags (OK button and information icon)
+	//	);
+	//	msgBox = true;
+	//}
+	
 	if (cellLoaded) {
 		D2WIN_UnloadCellFile(cf);
 		cellLoaded = false;
@@ -762,7 +811,7 @@ void ScreenInfo::WriteRunTrackerData() {
 
 void ScreenInfo::DrawPopup(wchar_t* buffName, int x, int y) {	
 	int textWidth = D2WIN_GetTextWidth(buffName);
-	D2WIN_DrawRectText(buffName, x - textWidth / 2, y - 2, White, DRAW_MODE_ALPHA_50, White);
+	D2WIN_DrawFramedText(buffName, x, y - 7, White, 1);
 }
 
 vector<wstring> ScreenInfo::strBreakApart(wstring str, wchar_t delimiter) {
@@ -773,6 +822,52 @@ vector<wstring> ScreenInfo::strBreakApart(wstring str, wchar_t delimiter) {
 		parts.push_back(temp);
 
 	return parts;
+}
+
+void __stdcall ScreenInfo::CustomExpBar(int x1, int y1, int x2, int y2) {
+
+	int x1Bar = x1 - 2;
+	int y1Bar = y1 - 5;
+	int x2Bar = x1 + 121 + 2;
+	int y2Bar = y1 + 5;
+	
+	D2GFX_DrawRectangle(x1Bar, y1Bar, x2Bar, y2Bar, 0, DRAW_MODE_NORMAL);
+	D2GFX_DrawRectangle(x1, y1Bar + 2, x2, y2Bar - 1, 0x90, DRAW_MODE_NORMAL);
+	D2GFX_DrawLine(x1Bar, y1Bar, x2Bar, y1Bar, 0xFF, 0xFF);
+	D2GFX_DrawLine(x1Bar, y2Bar, x2Bar, y2Bar, 0xFF, 0xFF);
+	D2GFX_DrawLine(x1Bar, y1Bar, x1Bar, y2Bar, 0xFF, 0xFF);
+	D2GFX_DrawLine(x2Bar, y1Bar, x2Bar, y2Bar, 0xFF, 0xFF);
+	return;
+}
+
+void __fastcall ScreenInfo::CustomExpBarHover(const wchar_t* wStr, int xPos, int yPos, int nColor, int centered) {
+	UnitAny* player = D2CLIENT_GetPlayerUnit();
+	if (!player)
+		return;
+
+	DWORD mouseX = *p_D2CLIENT_MouseX;
+	DWORD screenY = *p_D2CLIENT_ScreenSizeY;
+	DWORD exp = D2COMMON_GetUnitStat(player, STAT_EXP, 0);
+	DWORD level = D2COMMON_GetBaseStatSigned(player, STAT_LEVEL, 0);
+	DWORD expForNextLevel = D2COMMON_GetExpForNextLevel(player->dwTxtFileNo, level);
+	DWORD expForCurrLevel = D2COMMON_GetExpForNextLevel(player->dwTxtFileNo, level-1);
+	DWORD expMissing = (expForNextLevel > exp) ? (expForNextLevel - exp) : 0;
+	double percLevel = 0.0;
+	if (expForNextLevel > expForCurrLevel) {
+		percLevel = (static_cast<double>(exp - expForCurrLevel) / (expForNextLevel - expForCurrLevel)) * 100.0;
+	}
+
+	char buf[128];
+	sprintf_s(buf, "Exp until level: %u\nCompleted: %.2f%%\n%u/%u\n", expMissing, percLevel, exp, expForNextLevel);
+
+	//string str = "Completed: "+ to_string(expForNextLevel - exp) +"%\n";
+	//str += to_string(exp) + "/" + to_string(percLevel) + "\n";
+
+	wchar_t* wStrFinal = AnsiToUnicode(buf);
+	D2WIN_DrawFramedText(wStrFinal, xPos + 60, screenY - 0x33, Gold, 1);
+
+	delete[] wStrFinal;
+
 }
 
 // The states players can receive via packets 0xA8/0xA9
@@ -1058,4 +1153,25 @@ StateCode GetStateCode(const char* name) {
 		}
 	}
 	return StateCodes[0];
+}
+
+void __declspec(naked) ExpBar_Interception()
+{
+	__asm
+	{
+		push edi
+		push ebx
+		push edi
+		push esi
+		call ScreenInfo::CustomExpBar
+		ret 0x18
+	}
+}
+
+void __declspec(naked) ExpBarHover_Interception()
+{
+	__asm
+	{
+	jmp ScreenInfo::CustomExpBarHover
+	}
 }
