@@ -2,12 +2,14 @@
 #include "../../BH.h"
 #include "ATIncludes\CMapIncludes.h"
 #include "ATIncludes\Vectors.h"
+#include "../Bnet/Bnet.h"
 
 #define VALIDPTR(x) ( (x) && (!IsBadReadPtr(x,sizeof(x))) )
 
 int waypoints[] = {119,157,156,323,288,402,324,237,238,398,496,511,494};
 int CSID = 0;
 int CS[] = {392, 394, 396, 255};
+unsigned int* AutoTele::serversIdx;
 
 
 using namespace Drawing;
@@ -16,7 +18,11 @@ void AutoTele::OnLoad() {
 	LoadConfig();
 
 	std::map<string, bool>* bnetBools (BH::BnetBools);
+	std::map<string, unsigned int>* bnetInts (BH::BnetInts);
 	std::map<string, bool>* gamefilterBools(BH::GamefilterBools);
+	std::vector<std::string> servers = { "gs1 - New York", "gs2 - Chicago", "gs3 - Silicon Valley" , "gs4 - Seattle" ,"gs5 - Dallas" ,"gs6 - Miami" ,"gs7 - Amsterdam", "gs8 - Melbourne", "gs9 - Singapore", "gs10 - Santiago"};
+
+	serversIdx = &(*bnetInts)["Preferred Server"];
 
 	settingsTab = new UITab("Misc", BH::settingsUI);
 	settingsTab = BH::uiTabs[0];
@@ -40,6 +46,7 @@ void AutoTele::OnLoad() {
 			&(*bnetBools)["Autofill Last Password"], "Autofill Last Password");
 	new Checkhook(settingsTab, col, (Y += 15),
 			&(*bnetBools)["Autofill Description"], "Autofill Description");
+	new Combohook(settingsTab, col + 170, Y, 125, &(*bnetInts)["Preferred Server"], servers);
 	new Checkhook(settingsTab, col, (Y += 15),
 			&(*gamefilterBools)["Show Difficulty"], "Show Difficulty");
 	new Checkhook(settingsTab, col, (Y += 15),
