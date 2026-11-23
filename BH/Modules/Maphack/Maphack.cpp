@@ -23,6 +23,7 @@ Patch* shakePatch = new Patch(Call, D2CLIENT, { 0x442A2, 0x452F2 }, (int)Shake_I
 Patch* diabloDeadMessage = new Patch((PatchType)0x68, D2CLIENT, { 0x52E84, 0x693B4 }, (int)0x14, 5);
 Patch* removePortalDelay = new Patch(Call, D2CLIENT, { 0x1AB81, 0x1AB81 }, (int)PortalDelay_Interception, 5);
 Patch* itemDropBackdropPatch = new Patch(Call, D2CLIENT, { 0x59462, 0x59462 }, (int)DropItemBackdrop_Interception, 0x11); //needs 13d offset
+Patch* tileLoadPatch = new Patch(Call, D2CLIENT, { 0x41AB5, 0x41AB5 }, (int)TileLoadPatch_Interception, 5); //needs 13d offset
 
 Patch* monsterNamePatch = new Patch(Call, D2WIN, { 0x13550, 0x140E0 }, (int)HoverObject_Interception, 5);
 Patch* cpuPatch = new Patch(NOP, D2CLIENT, { 0x3CB7C, 0x2770C }, 0, 9);
@@ -37,6 +38,10 @@ Patch* skipNpcMessages4 = new Patch(Call, D2CLIENT, { 0x7E9B7, 0x77737 }, (int)N
 static BOOL fSkipMessageReq = 0;
 static DWORD mSkipMessageTimer = 0;
 static DWORD mSkipQuestMessage = 1;
+TileHeader* Maphack::pAct4LavaTilesHeader = nullptr;
+unsigned int Maphack::a4LavaColor;
+vector<Maphack::LavaBlockBackup> Maphack::g_LavaBlocks;
+std::vector<Maphack::OriginalLavaBlock> Maphack::originalLavaBlocks;
 
 DrawDirective automapDraw(true, 5);
 
@@ -56,6 +61,7 @@ Maphack::Maphack() : Module("Maphack") {
 	lkLinesColor = 105;
 
 	ReadConfig();
+	prevA4LavaColor = a4LavaColor;
 }
 
 void Maphack::LoadConfig() {
@@ -66,12 +72,14 @@ void Maphack::LoadConfig() {
 	automapHiddenMonsters.clear();
 
 	ReadConfig();
+	prevA4LavaColor = a4LavaColor;
 }
 
 void Maphack::ReadConfig() {
 	BH::config->ReadInt("Reveal Mode", revealType);
 	BH::config->ReadInt("Show Monster Resistance", monsterResistanceThreshold);
 	BH::config->ReadInt("LK Chest Lines", lkLinesColor);
+	BH::config->ReadInt("A4 Lava Color", a4LavaColor);
 
 	BH::config->ReadKey("Reload Config", "VK_NUMPAD0", reloadConfig);
 	BH::config->ReadToggle("Show Settings", "VK_NUMPAD8", true, Toggles["Show Settings"]);
@@ -177,6 +185,7 @@ void Maphack::ReadConfig() {
 	BH::config->ReadToggle("Apply FPS Patch", "None", true, Toggles["Apply FPS Patch"]);
 	BH::config->ReadToggle("Show Automap On Join", "None", false, Toggles["Show Automap On Join"]);
 	BH::config->ReadToggle("Skip NPC Quest Messages", "None", true, Toggles["Skip NPC Quest Messages"]);
+	BH::config->ReadToggle("A4 Lava Patch", "None", true, Toggles["A4 Lava Patch"]);
 
 	BH::config->ReadInt("Minimap Max Ghost", automapDraw.maxGhost);
 }
@@ -241,6 +250,12 @@ void Maphack::ResetPatches() {
 		skipNpcMessages3->Remove();
 		skipNpcMessages4->Remove();
 	}
+
+	if (Toggles["A4 Lava Patch"].state) {
+		tileLoadPatch->Install();
+	}
+	else
+		tileLoadPatch->Remove();
 }
 
 void Maphack::OnLoad() {
@@ -248,6 +263,7 @@ void Maphack::OnLoad() {
 	ReadConfig();
 	ResetPatches();*/
 	diabloDeadMessage->Install();
+	tileLoadPatch->Install();
 	//itemDropBackdropPatch->Install();
 
 	settingsTab = BH::uiTabs[3];
@@ -262,12 +278,12 @@ void Maphack::OnLoad() {
 	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Show Monsters"].state, "Show Monsters");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Show Monsters"].toggle, "");
 
-	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Monster Enchantments"].state, "  Enchantments");
+	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Monster Enchantments"].state, "Enchantments");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Monster Enchantments"].toggle, "");
 
-	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Monster Resistances"].state, "  Resistances");
+	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Monster Resistances"].state, "Resistances");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Monster Resistances"].toggle, "");
-	
+
 	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Normal Monsters"].state, "Show Normal Monsters");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Normal Monsters"].toggle, "");
 	
@@ -318,6 +334,9 @@ void Maphack::OnLoad() {
 	new Colorhook(settingsTab, col2_x, 122, &monsterColors["Champion"], "Champion");
 	new Colorhook(settingsTab, col2_x, 137, &monsterColors["Boss"], "Boss");
 
+	new Checkhook(settingsTab, col2_x, 170, &Toggles["A4 Lava Patch"].state, "Act4 Lava Patch");
+	new Colorhook(settingsTab, col2_x, 190, &a4LavaColor, "A4 Lava Color");
+
 	new Texthook(settingsTab, 6, (Y += 15), "Reveal Type:");
 
 	vector<string> options;
@@ -328,6 +347,10 @@ void Maphack::OnLoad() {
 
 	//initializing portal variables.
 	portalTimer = GetTickCount64();
+
+	prevA4LavaColor = a4LavaColor;
+	prevLavaEnabled = Toggles["A4 Lava Patch"].state;
+
 }
 
 void Maphack::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
@@ -371,9 +394,18 @@ void Maphack::OnLoop() {
 	ResetPatches();
 	BH::settingsUI->SetVisible(Toggles["Show Settings"].state);
 
-	// Get the player unit for area information.
-	UnitAny* unit = D2CLIENT_GetPlayerUnit();
-	if (!unit || !Toggles["Auto Reveal"].state)
+	UnitAny* player = D2CLIENT_GetPlayerUnit();
+	if (!player)
+		return;
+
+	bool isEnabled = Toggles["A4 Lava Patch"].state;
+	if ((a4LavaColor != prevA4LavaColor || isEnabled != prevLavaEnabled) && D2CLIENT_GetPlayerUnit()) {
+		prevA4LavaColor = a4LavaColor;
+		prevLavaEnabled = isEnabled;
+		ApplyAct4LavaColor(isEnabled);
+	}
+	
+	if (!Toggles["Auto Reveal"].state)
 		return;
 	
 	// Reveal the automap based on configuration.
@@ -732,8 +764,25 @@ void Maphack::OnAutomapDraw() {
 
 void Maphack::OnGameJoin() {
 	ResetRevealed();
+	TileHeader* pAct4LavaTilesHeader = nullptr;
+	prevA4LavaColor = a4LavaColor;
 	automapLevels.clear();
 	*p_D2CLIENT_AutomapOn = Toggles["Show Automap On Join"].state;
+}
+
+void Maphack::OnGameExit() {
+	originalLavaBlocks.clear();
+	RestoreAct4LavaPointers();
+}
+
+void Maphack::RestoreAct4LavaPointers() {
+	for (auto& entry : g_LavaBlocks) {
+		if (entry.subBlock && entry.originalDataOffset) {
+			entry.subBlock->pDataOffset = entry.originalDataOffset;
+		}
+	}
+	g_LavaBlocks.clear();
+	pAct4LavaTilesHeader = nullptr;
 }
 
 void Squelch(DWORD Id, BYTE button) {
@@ -1341,6 +1390,17 @@ void __declspec(naked) DropItemBackdrop_Interception()
 		mov edx, dword ptr[esi - 0x118]
 		lea ecx, dword ptr[esi - 0x104]
 		ret 0x10
+	}
+}
+
+void __declspec(naked) TileLoadPatch_Interception()
+{
+	__asm
+	{
+		push ecx
+		push edx
+		call Maphack::CustomTileLoad
+		ret 8
 	}
 }
 

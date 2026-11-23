@@ -22,8 +22,29 @@ struct BaseSkill {
 
 class Maphack : public Module {
 	private:
+
+		struct OriginalLavaBlock {
+			BYTE* pDataOffset;
+			vector<BYTE> originalPixels;
+		};
+
+		struct LavaBlockBackup {
+			DT1SubBlock* subBlock;
+			BYTE* originalDataOffset;
+			BYTE customBuffers[2][256]; // Two 256-byte ping-pong buffers per sub-block
+			int activeBuffer;
+		};
+
 		int monsterResistanceThreshold;
 		int lkLinesColor;
+		unsigned int prevA4LavaColor = 0;
+		bool prevLavaEnabled = true;
+
+		static unsigned int a4LavaColor;
+		static vector<LavaBlockBackup> g_LavaBlocks;
+		static vector<OriginalLavaBlock> originalLavaBlocks;
+		
+
 		ULONGLONG portalTimer;
 		unsigned int revealType;
 		unsigned int maxGhostSelection;
@@ -46,9 +67,10 @@ class Maphack : public Module {
 		map<std::string, Toggle> Toggles;
 		Drawing::UITab* settingsTab;
 		std::map<DWORD, std::vector<BaseSkill>> Skills;
+		static TileHeader* pAct4LavaTilesHeader;
 
 	public:
-	Maphack();
+		Maphack();
 
 	void ReadConfig();
 	void OnLoad();
@@ -60,6 +82,7 @@ class Maphack : public Module {
 	void OnDraw();
 	void OnAutomapDraw();
 	void OnGameJoin();
+	void OnGameExit();
 	void OnGamePacketRecv(BYTE* packet, bool *block);
 
 	void ResetRevealed();
@@ -75,7 +98,10 @@ class Maphack : public Module {
 	static Level* GetLevel(Act* pAct, int level);
 	static AutomapLayer* InitLayer(int level);
 	static void __stdcall CustomDrawDropBackdrop(UnitAny* pItem, const wchar_t* wStr, int x, int y, DWORD dwRectColor, DWORD dwTrans, DWORD dwColor);
+	static void __stdcall CustomTileLoad(DWORD* outputPtr, char* fileName);
+	static void ApplyAct4LavaColor(bool isEnabled);
 	int CanUsePortal();
+	void RestoreAct4LavaPointers();
 };
 
 void Weather_Interception();
@@ -85,6 +111,7 @@ void __stdcall Shake_Interception(LPDWORD lpX, LPDWORD lpY);
 void HoverObject_Interception();
 void PortalDelay_Interception();
 void DropItemBackdrop_Interception();
+void TileLoadPatch_Interception();
 
 void  NPCMessageLoopPatch_ASM();
 void  NPCQuestMessageStartPatch_ASM();
