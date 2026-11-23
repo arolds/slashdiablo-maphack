@@ -75,6 +75,7 @@ class Maphack : public Module {
 	static Level* GetLevel(Act* pAct, int level);
 	static AutomapLayer* InitLayer(int level);
 	static void __stdcall CustomDrawDropBackdrop(UnitAny* pItem, const wchar_t* wStr, int x, int y, DWORD dwRectColor, DWORD dwTrans, DWORD dwColor);
+	int CanUsePortal();
 };
 
 void Weather_Interception();

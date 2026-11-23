@@ -171,6 +171,7 @@ void Maphack::ReadConfig() {
 	BH::config->ReadToggle("Remove Shake", "None", false, Toggles["Remove Shake"]);
 	BH::config->ReadToggle("Display Level Names", "None", true, Toggles["Display Level Names"]);
 	BH::config->ReadToggle("Monster Resistances", "None", true, Toggles["Monster Resistances"]);
+	BH::config->ReadToggle("Normal Monsters", "None", true, Toggles["Normal Monsters"]);
 	BH::config->ReadToggle("Monster Enchantments", "None", true, Toggles["Monster Enchantments"]);
 	BH::config->ReadToggle("Apply CPU Patch", "None", true, Toggles["Apply CPU Patch"]);
 	BH::config->ReadToggle("Apply FPS Patch", "None", true, Toggles["Apply FPS Patch"]);
@@ -267,6 +268,9 @@ void Maphack::OnLoad() {
 	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Monster Resistances"].state, "  Resistances");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Monster Resistances"].toggle, "");
 	
+	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Normal Monsters"].state, "Show Normal Monsters");
+	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Normal Monsters"].toggle, "");
+	
 	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Show Missiles"].state, "Show Missiles");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Show Missiles"].toggle, "");
 
@@ -291,8 +295,8 @@ void Maphack::OnLoad() {
 	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Apply CPU Patch"].state, "CPU Patch");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Apply CPU Patch"].toggle, "");
 
-	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Apply FPS Patch"].state, "FPS Patch (SP Only)");
-	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Apply FPS Patch"].toggle, "");
+	//new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Apply FPS Patch"].state, "FPS Patch (SP Only)");
+	//new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Apply FPS Patch"].toggle, "");
 
 	new Checkhook(settingsTab, 4, (Y += 15), &Toggles["Show Automap On Join"].state, "Show Automap On Join");
 	new Keyhook(settingsTab, keyhook_x, (Y + 2), &Toggles["Show Automap On Join"].toggle, "");
@@ -516,6 +520,10 @@ void Maphack::OnAutomapDraw() {
 
 					// User can hide monsters from map
 					if (std::find(automapHiddenMonsters.begin(), automapHiddenMonsters.end(), unit->dwTxtFileNo) != automapHiddenMonsters.end() ) {
+						continue;
+					}
+
+					if (!Toggles["Normal Monsters"].state && !unit->pMonsterData->fBoss && !unit->pMonsterData->fChamp && !unit->pMonsterData->fMinion) {
 						continue;
 					}
 
