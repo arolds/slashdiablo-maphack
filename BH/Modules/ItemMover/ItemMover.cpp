@@ -93,16 +93,24 @@ bool ItemMover::LoadInventory(UnitAny *unit, int source, int sourceX, int source
 	BYTE itemXSize, itemYSize;
 	bool cubeInInventory = false, cubeAnywhere = false;
 	for (UnitAny *pItem = unit->pInventory->pFirstItem; pItem; pItem = pItem->pItemData->pNextInvItem) {
-		int *p, width;
+		if (!pItem->pItemData || !pItem->pObjectPath) continue;
+
+		ItemText* pTxt = D2COMMON_GetItemText(pItem->dwTxtFileNo);
+		if (!pTxt) continue;
+
+		int *p, width, height;
 		if (pItem->pItemData->ItemLocation == STORAGE_INVENTORY) {
 			p = InventoryItemIds;
 			width = INVENTORY_WIDTH;
+			height = INVENTORY_HEIGHT;
 		} else if (pItem->pItemData->ItemLocation == STORAGE_STASH) {
 			p = StashItemIds;
 			width = STASH_WIDTH;
+			height = STASH_HEIGHT;
 		} else if (pItem->pItemData->ItemLocation == STORAGE_CUBE) {
 			p = CubeItemIds;
 			width = CUBE_WIDTH;
+			height = CUBE_HEIGHT;
 		} else {
 			continue;
 		}
@@ -126,6 +134,9 @@ bool ItemMover::LoadInventory(UnitAny *unit, int source, int sourceX, int source
 		BYTE ySize = D2COMMON_GetItemText(pItem->dwTxtFileNo)->ySize;
 		for (int x = xStart; x < xStart + xSize; x++) {
 			for (int y = yStart; y < yStart + ySize; y++) {
+				// Prevent out-of-bounds write when an item is mid-transition
+				if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
 				p[y*width + x] = pItem->dwUnitId;
 
 				// If you click to move the cube into itself, your character ends up in
@@ -192,6 +203,10 @@ bool ItemMover::FindDestination(int destination, unsigned int itemId, BYTE xSize
 				int vacancies = 0;
 				for (int testx = x; testx < x + xSize && testx < width; testx++) {
 					for (int testy = y; testy < y + ySize && testy < height; testy++) {
+						if (testx < 0 || testy < 0) {
+							abort = true;
+							break;
+						}
 						if (p[testy*width + testx]) {
 							abort = true;
 							break;
@@ -236,6 +251,7 @@ bool ItemMover::FindDestination(int destination, unsigned int itemId, BYTE xSize
 		found = true;
 	}
 
+	bool queued = false;
 	if (found) {
 		Lock();
 		if (ActivePacket.startTicks == 0) {
@@ -244,11 +260,12 @@ bool ItemMover::FindDestination(int destination, unsigned int itemId, BYTE xSize
 			ActivePacket.y = destY;
 			ActivePacket.startTicks = BHGetTickCount();
 			ActivePacket.destination = destination;
+			queued = true;
 		}
 		Unlock();
 	}
 
-	return found;
+	return queued;
 }
 
 void ItemMover::PickUpItem() {
@@ -276,39 +293,51 @@ void ItemMover::OnLeftClick(bool up, unsigned int x, unsigned int y, bool* block
 	UnitAny *unit = D2CLIENT_GetPlayerUnit();
 	bool shiftState = ((GetKeyState(VK_LSHIFT) & 0x80) || (GetKeyState(VK_RSHIFT) & 0x80));
 	
-	if (up || !unit || !shiftState || D2CLIENT_GetCursorItem()>0 ||
+	if (up || !unit || !unit->pInventory || !unit->pPath || !shiftState || D2CLIENT_GetCursorItem() != NULL ||
 		(!D2CLIENT_GetUIState(UI_INVENTORY) && !D2CLIENT_GetUIState(UI_STASH)
 			&& !D2CLIENT_GetUIState(UI_CUBE) && !D2CLIENT_GetUIState(UI_NPCSHOP)) ||
 		!Init()) {
 		return;
-	}
+	}                              
 
 	unidItemId = 0;
 	idBookId = 0;
-	
-	int mouseX,mouseY;	
 
-	for (UnitAny *pItem = unit->pInventory->pFirstItem; pItem; pItem = pItem->pItemData->pNextInvItem) {
-		char *code = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode;
-		if ((pItem->pItemData->dwFlags & ITEM_IDENTIFIED) <= 0) {
-			int xStart = pItem->pObjectPath->dwPosX;
-			int yStart = pItem->pObjectPath->dwPosY;
-			BYTE xSize = D2COMMON_GetItemText(pItem->dwTxtFileNo)->xSize;
-			BYTE ySize = D2COMMON_GetItemText(pItem->dwTxtFileNo)->ySize;
-			if (pItem->pItemData->ItemLocation == STORAGE_INVENTORY) {
+	for (UnitAny* pItem = unit->pInventory->pFirstItem; pItem; pItem = pItem->pItemData ? pItem->pItemData->pNextInvItem : nullptr) {
+		if (!pItem->pItemData || !pItem->pObjectPath) continue;
+
+		ItemText* pTxt = D2COMMON_GetItemText(pItem->dwTxtFileNo);
+		if (!pTxt) continue;
+
+		char *code = pTxt->szCode;
+		BYTE loc = pItem->pItemData->ItemLocation;
+
+		if (!(pItem->pItemData->dwFlags & ITEM_IDENTIFIED)) {
+			int mouseX = -1, mouseY = -1;
+			if (loc == STORAGE_INVENTORY && *p_D2CLIENT_MouseX >= INVENTORY_LEFT && *p_D2CLIENT_MouseY >= INVENTORY_TOP) {
 				mouseX = (*p_D2CLIENT_MouseX - INVENTORY_LEFT) / CELL_SIZE;
 				mouseY = (*p_D2CLIENT_MouseY - INVENTORY_TOP) / CELL_SIZE;
-			} else if(pItem->pItemData->ItemLocation == STORAGE_STASH) {
+			}
+			else if (loc == STORAGE_STASH && *p_D2CLIENT_MouseX >= STASH_LEFT && *p_D2CLIENT_MouseY >= STASH_TOP) {
 				mouseX = (*p_D2CLIENT_MouseX - STASH_LEFT) / CELL_SIZE;
 				mouseY = (*p_D2CLIENT_MouseY - STASH_TOP) / CELL_SIZE;
-			} else if(pItem->pItemData->ItemLocation == STORAGE_CUBE) {
+			}
+			else if (loc == STORAGE_CUBE && *p_D2CLIENT_MouseX >= CUBE_LEFT && *p_D2CLIENT_MouseY >= CUBE_TOP) {
 				mouseX = (*p_D2CLIENT_MouseX - CUBE_LEFT) / CELL_SIZE;
 				mouseY = (*p_D2CLIENT_MouseY - CUBE_TOP) / CELL_SIZE;
 			}
-			for (int x = xStart; x < xStart + xSize; x++) {
-				for (int y = yStart; y < yStart + ySize; y++) {
-					if (x == mouseX && y == mouseY) {
-						if ((pItem->pItemData->ItemLocation == STORAGE_STASH && !D2CLIENT_GetUIState(UI_STASH)) || (pItem->pItemData->ItemLocation == STORAGE_CUBE && !D2CLIENT_GetUIState(UI_CUBE))) {
+			else {
+				continue;
+			}
+
+			int xStart = pItem->pObjectPath->dwPosX;
+			int yStart = pItem->pObjectPath->dwPosY;
+			BYTE xSize = pTxt->xSize;
+			BYTE ySize = pTxt->ySize;
+			for (int ix = xStart; ix < xStart + xSize; ix++) {
+				for (int iy = yStart; iy < yStart + ySize; iy++) {
+					if (ix == mouseX && iy == mouseY) {
+						if ((loc == STORAGE_STASH && !D2CLIENT_GetUIState(UI_STASH)) || (loc == STORAGE_CUBE && !D2CLIENT_GetUIState(UI_CUBE))) {
 							return;
 						}
 						unidItemId = pItem->dwUnitId;								
@@ -316,7 +345,7 @@ void ItemMover::OnLeftClick(bool up, unsigned int x, unsigned int y, bool* block
 				}
 			}
 		}
-		if (code[0] == 'i' && code[1] == 'b' && code[2] == 'k' && pItem->pItemData->ItemLocation == STORAGE_INVENTORY && D2COMMON_GetUnitStat(pItem, STAT_AMMOQUANTITY, 0)>0) {
+		if (code[0] == 'i' && code[1] == 'b' && code[2] == 'k' && loc == STORAGE_INVENTORY && D2COMMON_GetUnitStat(pItem, STAT_AMMOQUANTITY, 0)>0) {
 			idBookId = pItem->dwUnitId;
 		}
 		if (unidItemId > 0 && idBookId > 0) {
@@ -338,6 +367,26 @@ void ItemMover::OnRightClick(bool up, unsigned int x, unsigned int y, bool* bloc
 	if (up || !unit || !(shiftState || ctrlState) || !Init()) {
 		return;
 	}
+
+	if (D2CLIENT_GetCursorItem() != NULL) {
+		return;
+	}
+
+	Lock();
+	if (ActivePacket.startTicks != 0) {
+		if (BHGetTickCount() - ActivePacket.startTicks < 500) {
+			Unlock();
+			*block = true;
+			return;
+		}
+		// Failsafe: reset if the server took > 500ms so item moving doesn't get stuck
+		ActivePacket.itemId = 0;
+		ActivePacket.x = 0;
+		ActivePacket.y = 0;
+		ActivePacket.startTicks = 0;
+		ActivePacket.destination = 0;
+	}
+	Unlock();
 
 	int source, sourceX, sourceY;
 	int invUI = D2CLIENT_GetUIState(UI_INVENTORY);
@@ -384,12 +433,12 @@ void ItemMover::OnLoad() {
 	unsigned int x = 8;
 	unsigned int y = 7;
 	new Drawing::Texthook(settingsTab, x, y, "Keys (esc to clear)");
-	new Drawing::Keyhook(settingsTab, x, (y += 15), &TpKey ,  "Quick Town Portal:     ");
-	new Drawing::Keyhook(settingsTab, x, (y += 15), &HealKey, "Use Healing Potion:    ");
-	new Drawing::Keyhook(settingsTab, x, (y += 15), &ManaKey, "Use Mana Potion:       ");
-	new Drawing::Keyhook(settingsTab, x, (y += 15), &JuvKey,  "Use Rejuv Potion:      ");
+	new Drawing::Keyhook(settingsTab, x, (y += 15), &TpKey ,  "Quick Town Portal:       ");
+	new Drawing::Keyhook(settingsTab, x, (y += 15), &HealKey, "Use Healing Potion:      ");
+	new Drawing::Keyhook(settingsTab, x, (y += 15), &ManaKey, "Use Mana Potion:         ");
+	new Drawing::Keyhook(settingsTab, x, (y += 15), &JuvKey,  "Use Rejuv Potion:        ");
 
-	y += 7;
+	y += 65;
 
 	new Drawing::Texthook(settingsTab, x, (y += 15), "QoL features");
 	colored_text = new Drawing::Texthook(settingsTab, x, (y += 15),
@@ -455,6 +504,10 @@ void ItemMover::OnKey(bool up, BYTE key, LPARAM lParam, bool* block)  {
 				*reinterpret_cast<WORD*>(PacketData + 9) = (WORD)unit->pPath->yPos;
 				D2NET_SendPacket(13, 0, PacketData);
 			}
+
+			//potion chug sound.
+			D2CLIENT_PlaySound(238);
+
 			*block = true;
 		}
 	}
