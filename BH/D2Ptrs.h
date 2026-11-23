@@ -124,6 +124,7 @@ FUNCPTR(D2CLIENT, GetUnitX, int __fastcall, (UnitAny* pUnit), 0x1630, 0x1210)
 FUNCPTR(D2CLIENT, GetUnitY, int __fastcall, (UnitAny* pUnit), 0x1660, 0x1240)
 
 FUNCPTR(D2CLIENT, ShopAction, void __fastcall, (UnitAny* pItem, UnitAny* pNpc, UnitAny* pNpc2, DWORD dwSell, DWORD dwItemCost, DWORD dwMode, DWORD _2, DWORD _3), 0x47D60, 0x7D030)
+FUNCPTR(D2CLIENT, SwitchShopTab, void __stdcall, (int PageNum), 0x8F710, 0x8F710)
 
 FUNCPTR(D2CLIENT, CloseNPCInteract, void __fastcall, (void), 0x492F0, 0x7BC10)
 //FUNCPTR(D2CLIENT, ClearScreen, void __fastcall, (void), 0x492F0) // unused but I want to look into using it // wrong function
@@ -172,6 +173,8 @@ ASMPTR(D2CLIENT, OverrideShrinePatch_ORIG, 0x1155B8, 0x101B08)//Updated 1.13c
 
 VARPTR(D2CLIENT, ScreenSizeX, DWORD, 0xDBC48, 0xF7034)
 VARPTR(D2CLIENT, ScreenSizeY, DWORD, 0xDBC4C, 0xF7038)
+VARPTR(D2CLIENT, GameView, GameView*, 0x11C3C4, 0x11D20C)
+
 
 VARPTR(D2CLIENT, CursorHoverX, DWORD, 0xE0EB8, 0xEE4AC)
 VARPTR(D2CLIENT, CursorHoverY, DWORD, 0xE0EBC, 0xEE4B0)
@@ -211,6 +214,15 @@ VARPTR(D2CLIENT, PanelOffsetX, int, 0x11B9A0, 0x11D354);
 
 VARPTR(D2CLIENT, RegularCursorType, DWORD, 0x11B864, 0x11C98C)
 VARPTR(D2CLIENT, ShopCursorType, DWORD, 0x11BC34, 0x11CB24)
+VARPTR(D2CLIENT, ShopInfo, ShopInfo, 0x11BC48, 0x11BC48) //needs 13d
+VARPTR(D2CLIENT, SelectedSkillTab, DWORD, 0xE24F8, 0xE24F8) //needs 13d
+VARPTR(D2CLIENT, NpcMenuText, NPCMenuText*, 0x119763, 0x119763) //needs 13d
+
+
+VARPTR(D2CLIENT, ShopTab1, DWORD, 0xE1186, 0xE1186) //needs 13d
+VARPTR(D2CLIENT, ShopTab2, DWORD, 0xE1198, 0xE1198) //needs 13d
+VARPTR(D2CLIENT, ShopTab3, DWORD, 0xE11AA, 0xE11AA) //needs 13d
+VARPTR(D2CLIENT, ShopTab4, DWORD, 0xE11BC, 0xE11BC) //needs 13d
 
 
 VARPTR(D2CLIENT, Ping, DWORD, 0x119804, 0x108764)
@@ -254,6 +266,10 @@ VARPTR(D2CLIENT, NoPickUp, DWORD, 0x11C2F0, 0x11D574) // unused but I want to ad
 // VARPTR(D2CLIENT, ScreenCovered, DWORD, 0x1E8F9) // unused, appears to be an int specifying which screens (if any) are opened...
 
 VARPTR(D2CLIENT, ChatMsg, wchar_t*, 0x11EC80, 0x11D650)
+
+VARPTR(D2CLIENT, FramesDrawnGame, DWORD, 0x1197F4, 0x108754)
+VARPTR(D2CLIENT, FramesDrawnGlobal, DWORD, 0x11980C, 0x10876C)
+VARPTR(D2CLIENT, SubjectVar, DWORD, 0x11981C, 0x11D650)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -315,6 +331,8 @@ ASMPTR(D2WIN, DrawTextBuffer, 0x12940, 0x134D0)
 
 ASMPTR(D2CLIENT, ParseStats_J, 0x54E10, 0x2CE40)
 
+ASMPTR(D2CLIENT, StartTrade_I, 0x4AEE0, 0x4AEE0) //needs 13d
+ASMPTR(D2CLIENT, StartGamble_I, 0x4ABE0, 0x4ABE0) //needs 13d
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // D2Common Ordinals
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -336,6 +354,7 @@ FUNCPTR(D2COMMON, CopyStatList, DWORD __stdcall, (StatList* pStatList, Stat* pSt
 FUNCPTR(D2COMMON, GetBaseStatSigned, int __stdcall, (UnitAny *pUnit, int nStat, int nLayer), -10587, -10216)
 FUNCPTR(D2COMMON, GetUnitStat, DWORD __stdcall, (UnitAny* pUnit, DWORD dwStat, DWORD dwStat2), -10973, -10550)
 FUNCPTR(D2COMMON, GetUnitState, int __stdcall, (UnitAny *pUnit, DWORD dwStateNo), -10494, -10706)
+FUNCPTR(D2COMMON, GetExpForNextLevel, DWORD __stdcall, (int nClass, int nLevel), -10399, -10399) //needs 13d
 
 FUNCPTR(D2COMMON, CheckUnitCollision, DWORD __stdcall, (UnitAny* pUnitA, UnitAny* pUnitB, DWORD dwBitMask), -10839, -10221)
 FUNCPTR(D2COMMON, GetRoomFromUnit,  Room1* __stdcall, (UnitAny * ptUnit), -10331, -10846)
@@ -366,6 +385,8 @@ FUNCPTR(D2COMMON, GetQuestFlag2, int __stdcall, (void *QuestInfo, DWORD quest, D
 
 FUNCPTR(D2COMMON, AbsScreenToMap, void __stdcall, (long *pX, long *pY), -10474, -10720)
 FUNCPTR(D2COMMON, MapToAbsScreen, void __stdcall, (long *pX, long *pY), -11087, -10115)
+FUNCPTR(D2COMMON, GetUnitXOffset, DWORD __stdcall, (UnitAny* pUnit), -10651, -10641)
+FUNCPTR(D2COMMON, GetUnitYOffset, DWORD __stdcall, (UnitAny* pUnit), -11142, -10057)
 
 FUNCPTR(D2COMMON, CheckWaypoint, DWORD __stdcall, (DWORD WaypointTable, DWORD dwLevelId), -10373, -11029)
 
@@ -421,6 +442,9 @@ FUNCPTR(D2GFX, DrawCellContextEx, void __stdcall, (CellContext *context, int Xpo
 FUNCPTR(D2GFX, GetScreenSize, DWORD __stdcall, (void), -10031, -10012) 
 
 FUNCPTR(D2GFX, GetHwnd, HWND __stdcall, (void), -10048, -10007)
+FUNCPTR(D2GFX, ClearCaches, void __stdcall, (void), -10086, -10086) //needs 13d
+FUNCPTR(D2GFX, SetPerspective, void __stdcall, (bool bPerspective), -10081, -10081) //needs 13d
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -428,6 +452,7 @@ FUNCPTR(D2GFX, GetHwnd, HWND __stdcall, (void), -10048, -10007)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 VARPTR(D2GFX, VideoMode, WORD, 0x11258, 0x14A38)
+VARPTR(D2GFX, Perspective, WORD, 0x10BE0, 0x10BE0) //needs 13d
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // D2Multi Functions
@@ -435,6 +460,7 @@ VARPTR(D2GFX, VideoMode, WORD, 0x11258, 0x14A38)
 
 FUNCPTR(D2MULTI, DoChat, void __fastcall, (void), 0xCB30, 0x11770)
 FUNCPTR(D2MULTI, PrintChannelText, void __stdcall, (char *szText, DWORD dwColor), 0xFC90, 0x13F30)
+FUNCPTR(D2MULTI, EnterLobbyChat, BOOL __stdcall, (void), 0xD9D0, 0xD9D0)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -462,7 +488,10 @@ ASMPTR(D2MULTI, ChannelInput_I, 0xD5B0, 0x11B80)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 FUNCPTR(D2CMP, InitCellFile, void __stdcall, (void *cellfile, CellFile **outptr, char *srcfile, DWORD lineno, DWORD filever, char *filename), -10006, -10008)
-FUNCPTR(D2CMP, DeleteCellFile, void __stdcall, (CellFile *cellfile), -10106, -10084)
+FUNCPTR(D2CMP, DeleteCellFile, void __stdcall, (CellFile *cellfile), -10065, -10020)
+FUNCPTR(D2CMP, SetupCellContext, BOOL __stdcall, (CellContext* tilecontext, int nZero, int nOne), -10005, -10025) //second and third arguments are always 0 and 1.
+FUNCPTR(D2CMP, SetupTileContext, BOOL __stdcall, (TileContext* tilecontext, int nOne, int nZero), -10106, -10084) //second and third arguments are always 1 and 0.
+FUNCPTR(D2CMP, LoadTile, TileHeader* __stdcall, (DWORD* outputPtr, char* fileName), -10003, -10003) //needs 13d
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -484,6 +513,7 @@ ASMPTR(D2LANG, Say_II, 0xB0B0, 0x8C60)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 VARPTR(D2LAUNCH, BnData, BnetData *, 0x25ABC, 0x25B30)
+VARPTR(D2LAUNCH, isLoggedIn, WORD, 0x25AD7, 0x25B30)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -494,6 +524,7 @@ FUNCPTR(D2WIN, DrawSprites, void __fastcall, (void), 0x18750, 0xEAA0)
 FUNCPTR(D2WIN, LoadCellFile, CellFile* __fastcall, (const char* szFile, int Type), -10111, -10023)
 FUNCPTR(D2WIN, UnloadCellFile, void __fastcall, (CellFile* pCellFile), -10126, -10189)
 FUNCPTR(D2WIN, DrawCellFile, void __fastcall, (CellFile * pCellFile, int xPos, int yPos, int div, int trans, int Color), -10138, -10172)
+FUNCPTR(D2WIN, RGBtoPalette, BYTE __stdcall, (BYTE red, BYTE green, BYTE blue), -10190, -10190) //needs 13d
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -512,6 +543,7 @@ FUNCPTR(D2WIN, SetControlText, void* __fastcall, (Control* box, wchar_t* txt), -
 FUNCPTR(D2WIN, GetTextWidthFileNo, DWORD __fastcall, (wchar_t *wStr, DWORD* dwWidth, DWORD* dwFileNo), -10177, -10179)
 
 FUNCPTR(D2WIN, CreateImage, Control* __fastcall, (int xPos, int yPos, int SizeX, int SizeY, CellFile* pCellFile, BOOL(__stdcall* OnClick)(Control*), void* a7, BOOL(__stdcall* KeyHandle)(Control*)), -10127, -10203) //Updated 1.13c
+FUNCPTR(D2WIN, CreateButton, Button* __fastcall, (int xPos, int yPos, int SizeX, int SizeY, CellFile* ptCellFile, BOOL(__stdcall* OnClick)(Control*), DWORD dwVKHotKey, DWORD CellFrame, DWORD ButtonFlags, DWORD TblTextNo, BOOL(__stdcall* OnHoverHandle)(Control*)), -10068, -10192)
 FUNCPTR(D2WIN, CreateEditBox, Control* __fastcall, (DWORD dwPosX, DWORD dwPosY, DWORD _1, DWORD _2, DWORD _3, DWORD _4, DWORD _5, BOOL(__stdcall *pCallback)(wchar_t* wText), DWORD _6, DWORD _7, ControlPreferences* pPreferences), 0x161B0, 0x11A10)//1.13c
 FUNCPTR(D2WIN, DestroyEditBox, VOID __fastcall, (Control* pControl), 0x159E0, 0xF320)//1.13c
 FUNCPTR(D2WIN, DestroyControl, VOID __stdcall, (Control* pControl), 0x18490, 0xE5F0)//1.13c
@@ -528,6 +560,7 @@ ASMPTR(D2WIN, LoadMpq_I, 0x7E60, 0x7E50)
 
 VARPTR(D2WIN, FirstControl, Control*, 0x214A0, 0x8DB34)
 VARPTR(D2WIN, FocusedControl, Control*, 0x214B0, 0x8DB44) // unused, but we ought to use it
+VARPTR(D2WIN, PaletteRGBs, BYTE, 0x42338, 0x42338) //needs 13d
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // D2Game Functions

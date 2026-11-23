@@ -56,6 +56,13 @@ struct TileContext;
 struct GfxCell;
 
 
+
+struct ShopInfo {
+	DWORD dwSelectedShopTab;	//0x00
+	DWORD _1;					//0x04
+	DWORD dwShopType;			//0x08 - 1 = gamble, 3 = regular shop. Couldn't find any other values.
+};
+
 struct D2Seed
 {
 	DWORD nLowSeed;
@@ -405,7 +412,7 @@ struct DT1SubBlock
 	WORD wTileFormat;				//0x08
 	DWORD dwSubLength;				//0x0A
 	WORD _2;						//0x0E
-	DWORD* pDataOffset;				//0x10
+	BYTE* pDataOffset;				//0x10
 };
 #pragma pack(pop)
 /*
@@ -438,6 +445,15 @@ struct TileContext // *.dt1
 	DT1SubBlock* pBlocks;			//0x54
 	char* szTileName;				//0x58
 	DWORD **ptBlock;				//0x5C <not sure - maybe its a struct>
+};
+
+struct TileHeader
+{
+	DWORD dwVersion;
+	DWORD dwFlags;
+	char szTileName[260];
+	DWORD dwNumTiles;
+	TileContext* pTilesArray;		//array of all tiles in dt1. pTilesArray[dwNumTiles]
 };
 
 struct CellFile // *.dc6
@@ -719,6 +735,5 @@ struct D2MenuEntry //size 0x550
 	CellFile* ptCellFile;								 //0x53C
 	CellFile* ptSwitchCellFile[4];						 //0x540
 };
-
 
 #endif

@@ -187,6 +187,25 @@ struct Control {
    Control* pChildControl;			//0x90
 };
 
+struct Button : Control // (size 0x274)
+{
+	//	 Control Header;									//0x00
+	DWORD dwButtonFlags;								//0x40 0x00 - normal 0x01 - radio 0x02 - switch 0x04 - play sound 0x20 - sth with disabled/enabled 0x40 - multi line 
+	DWORD dwIsPushed;									//0x44
+	BOOL  dwIsSwitched;                                //0x48
+	BOOL _1;			                                //0x4C
+	DWORD dwHotKey;                             	    //0x50
+	DWORD dwButtonType;                           		//0x54 0x00 - Normal Button, 0x01 - Switch Button 0x02 - Long Button
+	DWORD _2;	                                        //0x58
+	DWORD dwCellFrame;                                 //0x5C
+	DWORD dwFont;										//0x60  hardcoded
+	wchar_t wText[256];                              	//0x64
+	DWORD dwColor;										//0x264 hardcoded
+	BOOL(__stdcall* OnHover)(Button*);				//0x268
+	BOOL bisHovered;									//0x26C
+	DWORD dwStrTbl2ndLine;								//0x270
+};
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -542,13 +561,8 @@ struct MonsterData {
 
 struct ObjectData {
 	ObjectTxt *pTxt;				//0x00
-	union {
-		BYTE Type;					//0x04 (0x0F would be a Exp Shrine)
-		struct {
-			BYTE _1:7;
-			BYTE ChestLocked:1;
-		};
-	};
+	BYTE InteractType;				//0x04
+	BYTE _1[3];						//0x05
 	DWORD _2[8];					//0x08
 	char szOwner[0x10];				//0x28
 };
@@ -619,9 +633,9 @@ struct BnetData {
 	DWORD dwId2;				//0x04	
 	BYTE _12[13];				//0xC0
 	//DWORD dwId3;				//0x14
-	//WORD Unk3;					//0x18	
+	//WORD Unk3;					//0x18
 	BYTE _13[6];				//0xC0
-	char szGameName[22];		//0x1A
+	char szGameName[22];		//0x1B
 	char szGameIP[16];			//0x30
 	DWORD _2[15];				//0x40
 	DWORD dwId4;				//0x80
@@ -706,6 +720,16 @@ struct NPCMenu {
 	DWORD dwEntryFunc4;
 	BYTE _2[5];
 };
+
+struct NPCMenuText {
+	DWORD _1[19];
+	DWORD dwMenuEntries;
+	DWORD dwTextEntries; // seems to be menu entries +1 to include drawing the npc name text.
+	DWORD _2[5];
+	wchar_t szEntrytext[88]; // entry texts are in sequence 272 (0x110) bytes apart from each other.
+
+};
+
 
 struct OverheadMsg {
 	DWORD _1;

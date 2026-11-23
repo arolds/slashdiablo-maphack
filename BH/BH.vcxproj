@@ -157,9 +157,11 @@ if defined D2Path (
     <ClCompile Include="Drawing\Advanced\Keyhook\Keyhook.cpp" />
     <ClCompile Include="Drawing\Basic\Boxhook\Boxhook.cpp" />
     <ClCompile Include="Drawing\Basic\Crosshook\Crosshook.cpp" />
+    <ClCompile Include="Drawing\Basic\Diamondhook\Diamondhook.cpp" />
     <ClCompile Include="Drawing\Basic\Framehook\Framehook.cpp" />
     <ClCompile Include="Drawing\Basic\Linehook\Linehook.cpp" />
     <ClCompile Include="Drawing\Basic\Texthook\Texthook.cpp" />
+    <ClCompile Include="Drawing\Basic\Xhook\Xhook.cpp" />
     <ClCompile Include="Drawing\Hook.cpp" />
     <ClCompile Include="Drawing\Stats\StatsDisplay.cpp" />
     <ClCompile Include="Drawing\UI\UI.cpp" />
@@ -210,9 +212,11 @@ if defined D2Path (
     <ClInclude Include="Drawing\Advanced\Keyhook\Keyhook.h" />
     <ClInclude Include="Drawing\Basic\Boxhook\Boxhook.h" />
     <ClInclude Include="Drawing\Basic\Crosshook\Crosshook.h" />
+    <ClInclude Include="Drawing\Basic\Diamondhook\Diamondhook.h" />
     <ClInclude Include="Drawing\Basic\Framehook\Framehook.h" />
     <ClInclude Include="Drawing\Basic\Linehook\Linehook.h" />
     <ClInclude Include="Drawing\Basic\Texthook\Texthook.h" />
+    <ClInclude Include="Drawing\Basic\Xhook\Xhook.h" />
     <ClInclude Include="Drawing\Hook.h" />
     <ClInclude Include="Drawing\Stats\StatsDisplay.h" />
     <ClInclude Include="Drawing\UI\UI.h" />

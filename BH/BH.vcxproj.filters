@@ -46,6 +46,8 @@
     <ClCompile Include="Modules\StashExport\StashExport.cpp" />
     <ClCompile Include="TableReader.cpp" />
     <ClCompile Include="Task.cpp" />
+    <ClCompile Include="Drawing\Basic\Diamondhook\Diamondhook.cpp" />
+    <ClCompile Include="Drawing\Basic\Xhook\Xhook.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncDrawBuffer.h" />
@@ -107,5 +109,7 @@
     <ClInclude Include="Modules\StashExport\StashExport.h" />
     <ClInclude Include="TableReader.h" />
     <ClInclude Include="Task.h" />
+    <ClInclude Include="Drawing\Basic\Diamondhook\Diamondhook.h" />
+    <ClInclude Include="Drawing\Basic\Xhook\Xhook.h" />
   </ItemGroup>
 </Project>

@@ -3,6 +3,8 @@
 #include "Drawing\Basic\Boxhook\Boxhook.h"
 #include "Drawing\Basic\Texthook\Texthook.h"
 #include "Drawing\Basic\Crosshook\Crosshook.h"
+#include "Drawing\Basic\Diamondhook\Diamondhook.h"
+#include "Drawing\Basic\Xhook\Xhook.h"
 #include "Drawing\Basic\Framehook\Framehook.h"
 #include "Drawing\Basic\Linehook\Linehook.h"
 

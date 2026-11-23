@@ -71,15 +71,22 @@ bool Patch::Install() {
 	}
 
 	if (type != NOP) {
-		//Set the opcode
-		code[0] = type;
-
-		//Set the address to redirect to
-		if (type == Call || type == Jump) {
-			*(DWORD*)&code[1] = function - (address + 5);
-		} else {
-			code[1] = function;
+		if (type == Bytes) {
+			memcpy_s(code, length, &function, length);
 		}
+		else {
+			//Set the opcode
+			code[0] = type;
+
+			//Set the address to redirect to
+			if (type == Call || type == Jump) {
+				*(DWORD*)&code[1] = function - (address + 5);
+			}
+			else {
+				code[1] = function;
+			}
+		}
+		
 	}
 
 	//Write the patch in
