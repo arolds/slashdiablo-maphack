@@ -21,6 +21,7 @@ Patch* lightingPatch = new Patch(Call, D2CLIENT, { 0xA9A37, 0x233A7 }, (int)Ligh
 Patch* infraPatch = new Patch(Call, D2CLIENT, { 0x66623, 0xB4A23 }, (int)Infravision_Interception, 7);
 Patch* shakePatch = new Patch(Call, D2CLIENT, { 0x442A2, 0x452F2 }, (int)Shake_Interception, 5);
 Patch* diabloDeadMessage = new Patch((PatchType)0x68, D2CLIENT, { 0x52E84, 0x693B4 }, (int)0x14, 5);
+Patch* itemDropBackdropPatch = new Patch(Call, D2CLIENT, { 0x59462, 0x59462 }, (int)DropItemBackdrop_Interception, 0x11); //needs 13d offset
 
 Patch* monsterNamePatch = new Patch(Call, D2WIN, { 0x13550, 0x140E0 }, (int)HoverObject_Interception, 5);
 Patch* cpuPatch = new Patch(NOP, D2CLIENT, { 0x3CB7C, 0x2770C }, 0, 9);
@@ -244,6 +245,7 @@ void Maphack::OnLoad() {
 	ReadConfig();
 	ResetPatches();*/
 	diabloDeadMessage->Install();
+	//itemDropBackdropPatch->Install();
 
 	settingsTab = BH::uiTabs[3];
 
@@ -351,6 +353,7 @@ void Maphack::OnUnload() {
 	skipNpcMessages3->Remove();
 	skipNpcMessages4->Remove();
 	diabloDeadMessage->Remove();
+	//itemDropBackdropPatch->Remove();
 }
 
 void Maphack::OnLoop() {
@@ -1019,6 +1022,167 @@ Level* Maphack::GetLevel(Act* pAct, int level)
 	return D2COMMON_GetLevel(pAct->pMisc, level);
 }
 
+void __stdcall Maphack::CustomDrawDropBackdrop(UnitAny* pItem, const wchar_t* wStr, int x, int y, DWORD dwRectColor, DWORD dwTrans, DWORD dwColor) {
+	//DWORD newColor = dwRectColor;
+	//UnitItemInfo uInfo;
+	//uInfo.item = pItem;
+	//uInfo.itemCode[0] = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode[0];
+	//uInfo.itemCode[1] = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode[1];
+	//uInfo.itemCode[2] = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode[2];
+	//uInfo.itemCode[3] = 0;
+	//if (ItemAttributeMap.find(uInfo.itemCode) != ItemAttributeMap.end()) {
+	//	uInfo.attrs = ItemAttributeMap[uInfo.itemCode];
+	//	vector<Action> actions = map_action_cache.Get(&uInfo);
+	//	for (auto& action : actions) {
+	//		if (action.backdropColor != UNDEFINED_COLOR) { // needs background color changed.
+	//			newColor = action.backdropColor;
+	//			//we gotta manually draw the rectangle and then the text inside because HD text from d2gl messes up with the D2WIN_DrawRectText colors.
+	//			int textWidth = D2WIN_GetTextWidth(wStr);
+	//			int x1 = x;
+	//			int y1 = y-14;
+	//			int x2 = x + textWidth + 8;
+	//			int y2 = y1 + 16;
+	//			D2GFX_DrawRectangle(x1, y1, x2, y2, newColor, DRAW_MODE_ALPHA_50);
+	//			DWORD oldFont = D2WIN_SetTextSize(1);
+	//			D2WIN_DrawText(wStr, x1 + 4, y2 - 3, dwColor, 0);
+	//			D2WIN_SetTextSize(oldFont);
+	//			return;
+	//		}
+	//	}
+	//}
+	D2WIN_DrawRectText(wStr, x, y, dwRectColor, dwTrans, dwColor);
+}
+
+void __stdcall Maphack::CustomTileLoad(DWORD* outputPtr, char* fileName) {
+	char* lavaCStr = "DATA\\GLOBAL\\TILES\\Act4\\Lava\\Floor.dt1\0";
+	//char* plazaCStr = "DATA\\GLOBAL\\TILES\\Act4\\Fort\\Plaza.dt1";
+
+	TileHeader* tHeader = D2CMP_LoadTile(outputPtr, fileName);
+	if (!tHeader || _stricmp(lavaCStr, tHeader->szTileName) != 0) { //We're at the right dt1.
+		return;
+	}
+
+	pAct4LavaTilesHeader = tHeader;
+	Maphack* pMaphack = (Maphack*)BH::moduleManager->Get("maphack");
+	bool isEnabled = pMaphack ? pMaphack->Toggles["A4 Lava Patch"].state : true;
+	ApplyAct4LavaColor(isEnabled);
+
+	//DWORD a = 0x684957;
+	//DWORD* outPtr = new DWORD[5];
+	//TileHeader* plazaHeader = D2CMP_LoadTile(outPtr, plazaCStr);
+	//TileContext* plazaTile = plazaHeader->pTilesArray;
+	//int plazaNumTiles = plazaHeader->dwNumTiles;
+	//DT1SubBlock* plazaSubBlock = NULL;
+	//while (plazaNumTiles > 0) {
+	//	if (plazaTile->dwSubIndex == 0xB) {
+	//		if (plazaTile->ptBlock == 0) {  //tilecontext needs to be setup.
+	//			D2CMP_SetupTileContext(plazaTile, 1, 0);
+	//			plazaSubBlock = plazaTile->pBlocks;
+	//			break;
+	//		}
+	//	}
+	//	plazaTile++;
+	//	plazaNumTiles--;
+	//}
+	//if (!plazaSubBlock)
+	//	return;
+
+}
+
+static void ReuploadD2GlideFloorTile(HMODULE hD2Glide, TileContext* currentTile, short slot) {
+	BYTE* base = (BYTE*)hD2Glide;
+	BYTE* pFloorCacheArray = *(BYTE**)(base + 0x15A88);
+	void* texInfo = (void*)(base + 0x14BDC);
+	void* pixelBuf = *(void**)(base + 0x17B70);
+
+	if (!pFloorCacheArray || !pixelBuf || slot <= 0) {
+		return;
+	}
+
+	// 1. Build 128x128 16-bit texture into *(void**)(base + 0x17B70)
+	typedef void(__stdcall* BuildTileTex_t)(TileContext* ptTile, void* pOutPixels);
+	BuildTileTex_t pfnBuildTileTex = (BuildTileTex_t)(base + 0x8A60);
+	pfnBuildTileTex(currentTile, pixelBuf);
+
+	// 2. Upload via D2Glide's IAT stub (base + 0x6038 -> glide3x.5109FBA0)
+	DWORD tmu = *(DWORD*)(base + 0x17B68);
+	DWORD texAddress = *(DWORD*)(pFloorCacheArray + (slot * 20) - 0x10);
+
+	typedef void(__stdcall* grTexDownloadMipMap_t)(DWORD tmu, DWORD startAddress, DWORD evenOdd, void* info);
+	grTexDownloadMipMap_t pfnGrTexDownloadMipMap = (grTexDownloadMipMap_t)(base + 0x6038);
+	pfnGrTexDownloadMipMap(tmu, texAddress, 3, texInfo);
+}
+
+void Maphack::ApplyAct4LavaColor(bool isEnabled) {
+	if (!pAct4LavaTilesHeader) {
+		return;
+	}
+
+	HMODULE hD2Glide = GetModuleHandleA("D2Glide.dll");
+	TileContext* currentTile = pAct4LavaTilesHeader->pTilesArray;
+	bool shouldSnapshot = originalLavaBlocks.empty();
+	size_t blockIdx = 0;
+
+	for (int i = 0; i < pAct4LavaTilesHeader->dwNumTiles; i++, currentTile++) {
+		if (currentTile->dwMainIndex == 0x14) {
+			if (!currentTile->ptBlock) {
+				D2CMP_SetupTileContext(currentTile, 1, 0);
+			}
+
+			for (DWORD j = 0; j < currentTile->dwSubBlocks; j++) {
+				if (currentTile->pBlocks[j].wTileFormat == 1 && currentTile->pBlocks[j].pDataOffset) {
+
+					BYTE* pPixels = currentTile->pBlocks[j].pDataOffset;
+					// 1. Snapshot original 256 bytes once when Floor.dt1 first loads
+					if (shouldSnapshot) {
+						OriginalLavaBlock backup;
+						backup.pDataOffset = pPixels;
+						backup.originalPixels.assign(pPixels, pPixels + 256);
+						originalLavaBlocks.push_back(backup);
+					}
+
+					// 2. Apply custom color OR restore original lava pixels
+					if (isEnabled) {
+						memset(pPixels, (BYTE)a4LavaColor, 256);
+					}
+					else if (blockIdx < originalLavaBlocks.size()) {
+						memcpy(pPixels, originalLavaBlocks[blockIdx].originalPixels.data(), 256);
+					}
+					blockIdx++;
+				}
+			}
+
+			// If running Glide/D2GL (-3dfx) and this tile is already cached on screen (slot > 0),
+			// overwrite its existing texture slot in place (zero slot leaks, no line #210 error)
+			if (hD2Glide) {
+				short slot = *(short*)((BYTE*)currentTile + 0x42);
+				if (slot > 0) {
+					ReuploadD2GlideFloorTile(hD2Glide, currentTile, slot);
+				}
+			}
+		}
+	}
+}
+
+int Maphack::CanUsePortal()
+{
+	int justPortaled = 100;
+	if (GetTickCount64() >= portalTimer + 1000) {
+		justPortaled = 0;
+		portalTimer = GetTickCount64();
+	}
+	return justPortaled;
+	//DWORD playerArea = GetPlayerArea();
+	//if (playerArea == MAP_A1_ROGUE_ENCAMPMENT ||
+	//	playerArea == MAP_A2_LUT_GHOLEIN ||
+	//	playerArea == MAP_A3_KURAST_DOCKS ||
+	//	playerArea == MAP_A4_THE_PANDEMONIUM_FORTRESS ||
+	//	playerArea == MAP_A5_HARROGATH)
+		//return justPortaled;
+
+	
+}
+
 int HoverMonsterColor(UnitAny *pUnit) {
 	int color = White;
 	if (pUnit->pMonsterData->fBoss)
@@ -1136,6 +1300,25 @@ void __declspec(naked) HoverObject_Interception()
 		call D2WIN_DrawTextBuffer
 		push rtn
 		ret
+	}
+}
+
+void __declspec(naked) DropItemBackdrop_Interception()
+{
+	__asm
+	{
+		push dword ptr[esi + 4]						//text color
+		push dword ptr[esi]						//box transparency
+		push dword ptr[esi - 4]						//rect color
+		push dword ptr[esi - 0x10C]		//y pos
+		push dword ptr[esi - 0x118]		//x pos
+		lea ecx, dword ptr[esi - 0x104]
+		push ecx						//item name
+		push dword ptr[esi - 0x108]		//item
+		call Maphack::CustomDrawDropBackdrop
+		mov edx, dword ptr[esi - 0x118]
+		lea ecx, dword ptr[esi - 0x104]
+		ret 0x10
 	}
 }
 

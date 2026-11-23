@@ -73,6 +73,7 @@ class Maphack : public Module {
 
 	static Level* GetLevel(Act* pAct, int level);
 	static AutomapLayer* InitLayer(int level);
+	static void __stdcall CustomDrawDropBackdrop(UnitAny* pItem, const wchar_t* wStr, int x, int y, DWORD dwRectColor, DWORD dwTrans, DWORD dwColor);
 };
 
 void Weather_Interception();
@@ -81,6 +82,7 @@ void Infravision_Interception();
 void __stdcall Shake_Interception(LPDWORD lpX, LPDWORD lpY);
 void HoverObject_Interception();
 void DiabloMessage_Interception();
+void DropItemBackdrop_Interception();
 
 void  NPCMessageLoopPatch_ASM();
 void  NPCQuestMessageStartPatch_ASM();
