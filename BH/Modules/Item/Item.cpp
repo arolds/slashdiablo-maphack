@@ -167,7 +167,7 @@ void Item::LoadConfig() {
 	BH::config->ReadInt("Run Details Ping Level", trackerPingLevelSetting);
 	BH::config->ReadInt("Stat Range Color", statRangeColor);
 	BH::config->ReadKey("Refresh Window", "VK_F1", gambleRefresh);
-	BH::config->ReadKey("Select/Unselect", "VK_F2", gambleSelect);
+	BH::config->ReadKey("Select Unselect", "VK_F2", gambleSelect);
 
 	LoadNoIlvlCodes();
 
