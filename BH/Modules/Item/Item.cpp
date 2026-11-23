@@ -46,6 +46,7 @@
 #include "Item.h"
 #include "../../D2Ptrs.h"
 #include "../../D2Strings.h"
+#include "../../D2Helpers.h"
 #include "../../BH.h"
 #include "../../D2Stubs.h"
 #include "ItemDisplay.h"
@@ -63,11 +64,24 @@ unsigned int Item::pingLevelSetting = 0;
 unsigned int Item::trackerPingLevelSetting = -1;
 int Item::statRangeColor = TextColor::DarkGreen;
 UnitAny* Item::viewingUnit;
+vector<ShopItem*> Item::shopItemList;
+vector<char*> Item::gambleHightlightList;
+BYTE Item::gambleRefreshState = 0;
+UnitAny* Item::gambleNpc;
+BYTE Item::npcEntriesFlags = 0x00; //least significant bit will be se to 1 if npc has trade, bit to left of that will be set to 1 if npc has gamble.
 
 Patch* itemNamePatch = new Patch(Call, D2CLIENT, { 0x92366, 0x96736 }, (int)ItemName_Interception, 6);
 Patch* itemPropertiesPatch = new Patch(Jump, D2CLIENT, { 0x5612C, 0x2E3FC }, (int)GetProperties_Interception, 6);
 Patch* itemPropertyStringDamagePatch = new Patch(Call, D2CLIENT, { 0x55D7B, 0x2E04B }, (int)GetItemPropertyStringDamage_Interception, 5);
 Patch* itemPropertyStringPatch = new Patch(Call, D2CLIENT, { 0x55D9D, 0x2E06D }, (int) GetItemPropertyString_Interception, 5);
+Patch* npmMenuTextPatch = new Patch(Call, D2CLIENT, { 0xA39D9, 0xA39D9 }, (int)NpcMenuText_Interception, 5); //needs 13d offset
+Patch* npmMenuRectPatch = new Patch(Call, D2CLIENT, { 0xA38A1, 0xA38A1 }, (int)NpcMenuRect_Interception, 8); //needs 13d offset
+Patch* itemBackdropPatch = new Patch(Call, D2CLIENT, { 0x8C678, 0x8C678 }, (int)ItemBackdrop_Interception, 5);
+Patch* buyItemCooldownPatch = new Patch(Bytes, D2CLIENT, { 0x47E53 + 1, 0x47E53 + 1 }, 0x00c8, 2);
+
+//Patch* drinkPotionPatch = new Patch(Call, D2CLIENT, { 0x29A42, 0x29A42 }, (int)DrinkPotion_Interception, 0x51); //needs 13d offset
+
+
 Patch* viewInvPatch1 = new Patch(Call, D2CLIENT, { 0x953E2, 0x997B2 }, (int)ViewInventoryPatch1_ASM, 6);
 Patch* viewInvPatch2 = new Patch(Call, D2CLIENT, { 0x94AB4, 0x98E84 }, (int)ViewInventoryPatch2_ASM, 6);
 Patch* viewInvPatch3 = new Patch(Call, D2CLIENT, { 0x93A6F, 0x97E3F }, (int)ViewInventoryPatch3_ASM, 5);
@@ -97,12 +111,20 @@ void Item::OnLoad() {
 	itemPropertiesPatch->Install();
 	itemPropertyStringDamagePatch->Install();
 	itemPropertyStringPatch->Install();
+	itemBackdropPatch->Install();
+	buyItemCooldownPatch->Install();
+	npmMenuTextPatch->Install();
+	npmMenuRectPatch->Install();
 
 	if (Toggles["Show Ethereal"].state || Toggles["Show Sockets"].state || Toggles["Show iLvl"].state || Toggles["Color Mod"].state ||
 		Toggles["Show Rune Numbers"].state || Toggles["Alt Item Style"].state || Toggles["Shorten Item Names"].state || Toggles["Advanced Item Display"].state)
 		itemNamePatch->Install();
 
 	DrawSettings();
+	isPlayerShopping = false;
+	shopItemList.clear();
+	gambleHightlightList.clear();
+	gambleRefreshState = 0;
 }
 
 void ResetCaches() {
@@ -144,6 +166,8 @@ void Item::LoadConfig() {
 	BH::config->ReadInt("Ping Level", pingLevelSetting);
 	BH::config->ReadInt("Run Details Ping Level", trackerPingLevelSetting);
 	BH::config->ReadInt("Stat Range Color", statRangeColor);
+	BH::config->ReadKey("Refresh Window", "VK_F1", gambleRefresh);
+	BH::config->ReadKey("Select/Unselect", "VK_F2", gambleSelect);
 
 	LoadNoIlvlCodes();
 
@@ -278,6 +302,11 @@ void Item::DrawSettings() {
 	ping_options.push_back("5");
 	ping_options.push_back("6");
 	new Combohook(settingsTab, 330, y, 40, &pingLevelSetting, ping_options);
+
+	Drawing::UITab* interactionTab = BH::uiTabs[2];
+	y = 15 * 4 + 7;
+	new Keyhook(interactionTab, 8, (y += 15), &gambleRefresh, "Gamble Refresh:          ");
+	new Keyhook(interactionTab, 8, (y += 15), &gambleSelect, "Gamble Select/Unselect:  ");
 }
 
 void Item::OnUnload() {
@@ -285,6 +314,10 @@ void Item::OnUnload() {
 	itemPropertiesPatch->Remove();
 	itemPropertyStringDamagePatch->Remove();
 	itemPropertyStringPatch->Remove();
+	itemBackdropPatch->Remove();
+	npmMenuTextPatch->Remove();
+	npmMenuRectPatch->Remove();
+	buyItemCooldownPatch->Remove();
 	viewInvPatch1->Remove();
 	viewInvPatch2->Remove();
 	viewInvPatch3->Remove();
@@ -325,6 +358,90 @@ void Item::OnLoop() {
 			D2CLIENT_SetUIVar(0x01, 1, 0);
 		}
 	}
+
+	if (D2CLIENT_GetUIState(UI_NPCSHOP) > 0 && !isPlayerShopping) { //started shopping.
+		UnitAny* npcUnit = D2CLIENT_GetCurrentInteractingNPC();
+		if (!npcUnit)
+			return;
+
+		if (npcUnit->pInventory->dwItemCount == 0) //It looks like sometimes the itemlist doesn't load. We have to wait for next frame and try again.
+			return;
+
+		ShopInfo* shopInfo = p_D2CLIENT_ShopInfo;
+		for (UnitAny* pItem = npcUnit->pInventory->pFirstItem; pItem; pItem = pItem->pItemData->pNextInvItem) {
+			if (shopInfo->dwShopType == 3) {
+				BOOL isMatch = false;
+
+				UnitItemInfo itemInfo;
+				if (CreateUnitItemInfo(&itemInfo, pItem) < 0)
+					return;
+
+				for (vector<Rule*>::iterator it = MapRuleList.begin(); it != MapRuleList.end(); it++) {
+					if ((*it)->Evaluate(&itemInfo, NULL)) {
+						isMatch = true;
+						break;
+					}
+				}
+				ShopItem* item = new ShopItem{};
+				item->pItem = pItem;
+				item->isMatch = isMatch;
+
+				shopItemList.push_back(item);
+			}
+			/*else if (shopInfo->dwShopType == 1) {
+				char* itemCode = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode;
+				for (int i = gambleHightlightList.size() - 1; i >= 0; i--) {
+					if (itemCode[0] == gambleHightlightList[i][0] && itemCode[1] == gambleHightlightList[i][1] && itemCode[2] == gambleHightlightList[i][2]) {
+						D2CLIENT_PlaySound(232);
+						break;
+					}
+				}
+			}*/
+		}
+		isPlayerShopping = true;
+	}
+	else if ((D2CLIENT_GetUIState(UI_NPCSHOP) == 0 && D2CLIENT_GetUIState(UI_NPCMENU) == 0) && npcEntriesFlags > 0) { //ended shopping.
+		shopItemList.clear();
+		isPlayerShopping = false;
+		npcEntriesFlags = 0x00;
+	}
+
+	if (D2CLIENT_GetUIState(UI_NPCSHOP) > 0 && gambleRefreshState == 1) {
+		D2CLIENT_CloseNPCInteract();
+		gambleRefreshState = 2;
+	}
+	else if (D2CLIENT_GetUIState(UI_NPCSHOP) == 0 && gambleRefreshState == 2) {
+		if (!gambleNpc) {
+			gambleRefreshState = 0;
+			return;
+		}
+		Interact(gambleNpc->dwUnitId, 1);
+		gambleRefreshState = 3;
+	}
+	else if (D2CLIENT_GetUIState(UI_NPCMENU) > 0 && gambleRefreshState == 3) {
+		D2Client_StartGamble();
+		gambleRefreshState = 4;
+	}
+	else if (D2CLIENT_GetUIState(UI_NPCSHOP) > 0 && gambleRefreshState == 4) {
+		gambleRefreshState = 0;
+		shopItemList.clear();
+		isPlayerShopping = false;
+	}
+
+}
+
+void Item::OnDraw() {
+	ShopInfo* shopInfo = p_D2CLIENT_ShopInfo;
+	//gamble
+	if (shopInfo->dwShopType == 1 && D2CLIENT_GetUIState(UI_NPCSHOP) > 0) {
+		storeLayout = p_D2CLIENT_StoreLayout;
+		unsigned int boxX = storeLayout->Left + 65;
+		unsigned int boxY = storeLayout->Top - 60;
+		unsigned int boxW = (storeLayout->Right + 10) - (storeLayout->Left + 65);
+		unsigned int boxH = (storeLayout->Top - 35) - (storeLayout->Top - 60);
+		Drawing::Framehook::Draw(boxX, boxY, boxW, boxH, 0, Drawing::BTOneHalf);
+		//D2GFX_DrawRectangle(storeLayout->Left + 65, storeLayout->Top - 60, storeLayout->Right + 10, storeLayout->Top - 35, 0, DRAW_MODE_NORMAL);
+	}
 }
 
 void Item::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
@@ -344,7 +461,92 @@ void Item::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
 			return;
 		}
 	}
-	for (map<string,Toggle>::iterator it = Toggles.begin(); it != Toggles.end(); it++) {
+
+	if (D2CLIENT_GetUIState(UI_NPCMENU) == 1 && D2CLIENT_GetUIState(UI_NPCSHOP) == 0) {
+		if (key == 0x31 && npcEntriesFlags & 0x01) {
+			if (up)
+				return;
+			*block = true;
+			D2Client_StartTrade();
+			return;
+		}
+		if (key == 0x32 && npcEntriesFlags & 0x10) {
+			if (up)
+				return;
+			*block = true;
+			D2Client_StartGamble();
+			return;
+		}
+	}
+
+	if (D2CLIENT_GetUIState(UI_NPCSHOP) > 0) {
+		if (up)
+			return;
+		ShopInfo* shopInfo = p_D2CLIENT_ShopInfo;
+		if (shopInfo->dwShopType == 1) {
+			//re-open
+			if (key == gambleRefresh && gambleRefreshState == 0) {
+				*block = true;
+				//trigger gamble refresh
+				gambleNpc = D2CLIENT_GetCurrentInteractingNPC();
+				gambleRefreshState = 1;
+				return;
+			}
+			//highlight
+			if (key == gambleSelect) {
+				*block = true;
+				UnitAny* selectedItem = *p_D2CLIENT_SelectedInvItem;
+				if (!selectedItem)
+					return;
+				char* itemCode = D2COMMON_GetItemText(selectedItem->dwTxtFileNo)->szCode;
+				bool match = false;
+				for (int i = gambleHightlightList.size() - 1; i >= 0; i--) {
+					if (itemCode[0] == gambleHightlightList[i][0] && itemCode[1] == gambleHightlightList[i][1] && itemCode[2] == gambleHightlightList[i][2]) {
+						match = true;
+						gambleHightlightList.erase(gambleHightlightList.begin() + i);
+						break;
+					}
+				}
+				if (!match) {
+					gambleHightlightList.push_back(itemCode);
+				}
+				return;
+			}
+		}
+		else if (shopInfo->dwShopType == 3) {
+			switch (key)
+			{
+			case 0x31:
+				if (*p_D2CLIENT_ShopTab1 == 1 && shopInfo->dwSelectedShopTab != 0) {
+					*block = true;
+					D2CLIENT_SwitchShopTab(0);
+				}
+				break;
+			case 0x32:
+				if (*p_D2CLIENT_ShopTab2 == 1 && shopInfo->dwSelectedShopTab != 1) {
+					*block = true;
+					D2CLIENT_SwitchShopTab(1);
+				}
+				break;
+			case 0x33:
+				if (*p_D2CLIENT_ShopTab3 == 1 && shopInfo->dwSelectedShopTab != 2) {
+					*block = true;
+					D2CLIENT_SwitchShopTab(2);
+				}
+				break;
+			case 0x34:
+				if (*p_D2CLIENT_ShopTab4 == 1 && shopInfo->dwSelectedShopTab != 3) {
+					*block = true;
+					D2CLIENT_SwitchShopTab(3);
+				}
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	for (map<string, Toggle>::iterator it = Toggles.begin(); it != Toggles.end(); it++) {
 		if (key == (*it).second.toggle) {
 			*block = true;
 			if (up) {
@@ -1122,6 +1324,55 @@ void __stdcall Item::OnPropertyBuild(wchar_t* wOut, int nStat, UnitAny* pItem, i
 	}
 }
 
+void __stdcall Item::CustomDrawRectangle(UnitAny* pItem,  int x1, int y1, int x2, int y2, DWORD dwColor, DWORD dwTrans)
+{
+	DWORD rectColor = dwColor;
+	if (D2CLIENT_GetUIState(UI_NPCSHOP) > 0) {
+		ShopInfo* shopInfo = p_D2CLIENT_ShopInfo;
+		UnitAny* npcUnit = D2CLIENT_GetCurrentInteractingNPC();
+		if (pItem->pItemData->pOwnerInventory->pOwner == npcUnit) {
+			//shop
+			if (shopInfo->dwShopType == 3) {
+				for (int i = 0; i < shopItemList.size(); i++) {
+					if (pItem == shopItemList[i]->pItem && shopItemList[i]->isMatch) {
+						rectColor = 0x60;
+						break;
+					}
+				}
+			}
+			//gamble
+			else if (shopInfo->dwShopType == 1) {
+				char* itemCode = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode;
+				for (int i = gambleHightlightList.size() - 1; i >= 0; i--) {
+					if (itemCode[0] == gambleHightlightList[i][0] && itemCode[1] == gambleHightlightList[i][1] && itemCode[2] == gambleHightlightList[i][2]) {
+						rectColor = 0x84;
+						break;
+					}
+				}
+			}
+		}
+	}
+	D2GFX_DrawRectangle(x1, y1, x2, y2, rectColor, 0);
+}
+
+void __fastcall Item::CustomDrawMenuText(const wchar_t* wStr, int xPos, int yPos, DWORD dwColor, DWORD dwUnk, DWORD boxRight)
+{
+	char* str = UnicodeToAnsi(wStr);
+	char* number = "";
+	if (strcmp(str, "trade/repair") == 0 || strcmp(str, "trade") == 0) {
+		number = "[1]";
+		npcEntriesFlags = npcEntriesFlags | 0x01;
+	} else if (strcmp(str, "gamble") == 0) {
+		number = "[2]";
+		npcEntriesFlags = npcEntriesFlags | 0x10;
+	}
+
+	D2WIN_DrawText(wStr, xPos, yPos, dwColor, dwUnk);
+	DWORD textSize = D2WIN_SetTextSize(0);
+	int textWidth = D2WIN_GetTextWidth(AnsiToUnicode(number));
+	D2WIN_DrawText(AnsiToUnicode(number), boxRight - textWidth - 3, yPos+1, TextColor::Gold, dwUnk);
+	D2WIN_SetTextSize(textSize);
+}
 /*
 	Search mod used in MagicPrefix.txt, UniqueItemsTxt, RunesTxt, etc. (index from Properties.txt) by ItemStatCost.txt stat index
 	@param nStatParam - param column for property (skill id etc)
@@ -1350,6 +1601,57 @@ void __declspec(naked) ViewInventoryPatch3_ASM()
 		mov ecx, dword ptr [edi + 0x60];
 
 		ret;
+	}
+}
+
+void __declspec(naked) ItemBackdrop_Interception()
+{
+	__asm
+	{
+		push[esp + 0x18]
+		push[esp + 0x18]
+		push[esp + 0x18]
+		push[esp + 0x18]
+		push[esp + 0x18]
+		push[esp + 0x18]
+		push[esp + 0x3C]
+		call Item::CustomDrawRectangle
+		ret 0x18
+	}
+}
+
+
+void __declspec(naked) NpcMenuRect_Interception()
+{
+	__asm
+	{
+		sub eax, 0x11
+		add edi, 0x12
+		mov dword ptr [esp+0x20], eax
+		mov dword ptr [esp+0x28], edi
+		cmp dword ptr ds:[esi+0x0C], ebp //we have to cmp again to set the efl register back to what is supposed to be.
+		ret
+	}
+}
+
+void __declspec(naked) NpcMenuText_Interception()
+{
+	__asm
+	{
+		push[esp + 0x34] // trademenu semitransparent box Xpos.
+		push[esp + 0x10]
+		push[esp + 0x10]
+		push[esp + 0x10]
+		call Item::CustomDrawMenuText
+		ret 0xC
+	}
+}
+
+void __declspec(naked) DrinkPotion_Interception()
+{
+	__asm
+	{	
+		ret 4
 	}
 }
 

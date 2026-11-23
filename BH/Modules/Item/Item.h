@@ -52,6 +52,11 @@
 
 struct UnitAny;
 
+struct ShopItem {
+	UnitAny* pItem;
+	BOOL isMatch;
+};
+
 class Item : public Module {
 	private:
 		static map<std::string, Toggle> Toggles;
@@ -63,6 +68,15 @@ class Item : public Module {
 		static unsigned int pingLevelSetting;
 		static unsigned int trackerPingLevelSetting;
 		static int statRangeColor;
+		static vector<ShopItem*> shopItemList;
+		static vector<char*> gambleHightlightList;
+		static BYTE gambleRefreshState;
+		static UnitAny* gambleNpc;
+		static BYTE npcEntriesFlags;
+		BOOL isPlayerShopping;
+		unsigned int gambleRefresh;
+		unsigned int gambleSelect;
+		InventoryLayout *storeLayout;
 
 		void ResetPatches();
 	public:
@@ -79,6 +93,7 @@ class Item : public Module {
 		void OnGameJoin();
 
 		void OnLoop();
+		void OnDraw();
 		void OnKey(bool up, BYTE key, LPARAM lParam, bool* block);
 		void OnLeftClick(bool up, unsigned int x, unsigned int y, bool* block);
 		std::map<string, Toggle>* GetToggles() { return &Toggles; }
@@ -88,7 +103,10 @@ class Item : public Module {
 		static void __stdcall OnProperties(wchar_t *wTxt);
 		static BOOL __stdcall OnDamagePropertyBuild(UnitAny* pItem, DamageStats* pDmgStats, int nStat, wchar_t* wOut);
 		static void __stdcall OnPropertyBuild(wchar_t* wOut, int nStat, UnitAny* pItem, int nStatParam);
+		static void __stdcall CustomDrawRectangle(UnitAny* pItem, int x1, int y1, int x2, int y2, DWORD dwColor, DWORD dwTrans);
+		static void __fastcall CustomDrawMenuText(const wchar_t* wStr, int xPos, int yPos, DWORD dwColor, DWORD dwUnk, DWORD boxRight);
 
+		
 		static BOOL PermShowItemsPatch1();
 		static BOOL PermShowItemsPatch2();
 		static BOOL PermShowItemsPatch3();
@@ -100,11 +118,15 @@ class Item : public Module {
 		static unsigned int GetTrackerPingLevel() { return trackerPingLevelSetting >= 0 ? trackerPingLevelSetting : pingLevelSetting; }
 
 };
-
 void ItemName_Interception();
 void __fastcall GetProperties_Interception();
 void GetItemPropertyStringDamage_Interception();
 void GetItemPropertyString_Interception();
+void ItemBackdrop_Interception();
+void DrinkPotion_Interception();
+void NpcMenuText_Interception();
+void NpcMenuRect_Interception();
+
 void ViewInventoryPatch1_ASM();
 void ViewInventoryPatch2_ASM();
 void ViewInventoryPatch3_ASM();
