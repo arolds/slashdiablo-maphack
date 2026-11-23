@@ -31,6 +31,7 @@ class AutoTele : public Module {
 		POINT Vectors[5];
 		CArrayEx <POINT, POINT> TPath;
 		HANDLE LoadHandle;
+		static unsigned int* serversIdx;
 
 		//functions
 		DWORD GetPlayerArea();

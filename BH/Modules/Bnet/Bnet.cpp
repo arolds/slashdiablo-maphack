@@ -7,6 +7,7 @@ std::string Bnet::lastName;
 std::string Bnet::lastPass;
 std::string Bnet::lastDesc;
 std::regex Bnet::reg = std::regex("^(.*?)(\\d+)$");
+unsigned int* Bnet::prefServer = 0;
 
 // Fixes Unrecoverable internal error 6FF61787
 Patch* fog10251Patch = new Patch(Jump, FOG, { 0x11690, 0x11690 }, (int)Bnet::FOG10251Patch, 5);
@@ -36,6 +37,10 @@ void Bnet::OnLoad() {
 	keepDesc = &bools["Autofill Description"];
 	*keepDesc = true;
 
+	prefServer = &ints["Preferred Server"];
+	*prefServer = true;
+
+
 	failToJoin = 4000;
 	LoadConfig();
 }
@@ -45,6 +50,7 @@ void Bnet::LoadConfig() {
 	BH::config->ReadBoolean("Autofill Last Password", *showLastPass);
 	BH::config->ReadBoolean("Autofill Next Game", *nextInstead);
 	BH::config->ReadBoolean("Autofill Description", *keepDesc);
+	BH::config->ReadInt("Preferred Server", *prefServer);
 	BH::config->ReadInt("Fail To Join", failToJoin);
 
 	InstallPatches();
@@ -178,15 +184,19 @@ VOID __fastcall Bnet::NextPassPatch(Control* box, BOOL(__stdcall *FunCallBack)(C
 }
 
 VOID __fastcall Bnet::GameDescPatch(Control* box, BOOL(__stdcall *FunCallBack)(Control*, DWORD, DWORD)) {
-	if (Bnet::lastDesc.size() == 0)
-		return;
-	wchar_t *wszLastDesc = AnsiToUnicode(Bnet::lastDesc.c_str());
+	//if (Bnet::lastDesc.size() == 0)
+	//	return;
+
+	//wchar_t *wszLastDesc = AnsiToUnicode(Bnet::lastDesc.c_str());
+	string descStr = "gs" + (to_string(*prefServer + 1));
+	wchar_t* wszDesc = AnsiToUnicode(descStr.c_str());
+
 	
-	D2WIN_SetControlText(box, wszLastDesc);
-	
+	D2WIN_SetControlText(box, wszDesc);
+	delete[] wszDesc;
+
 	// original code
 	D2WIN_SetEditBoxProc(box, FunCallBack);
-	delete[] wszLastDesc;
 }
 
 void __declspec(naked) RemovePass_Interception() {

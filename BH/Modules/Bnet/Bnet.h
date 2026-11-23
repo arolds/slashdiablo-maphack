@@ -7,10 +7,12 @@ struct Control;
 class Bnet : public Module {
 	private:
 		std::map<string, bool> bools;
+		std::map<string, unsigned int> ints;
 		bool* showLastGame;
 		bool* showLastPass;
 		bool* nextInstead;
 		bool* keepDesc;
+		static unsigned int* prefServer;
 		static unsigned int failToJoin;
 		static std::string lastName;
 		static std::string lastPass;
@@ -32,6 +34,7 @@ class Bnet : public Module {
 		void RemovePatches();
 
 		std::map<string, bool>* GetBools() { return &bools; }
+		std::map<string, unsigned int>* GetInts() { return &ints; }
 		static VOID __fastcall FOG10251Patch(DWORD lpCriticalSection, char nLine);
 		static DWORD __stdcall BnetLobbyAdBlockPatch(DWORD a1);
 		static VOID __fastcall NextGamePatch(Control* box, BOOL (__stdcall *FunCallBack)(Control*, DWORD, DWORD));

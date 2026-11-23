@@ -24,7 +24,6 @@ void AutoTele::OnLoad() {
 
 	serversIdx = &(*bnetInts)["Preferred Server"];
 
-	settingsTab = new UITab("Misc", BH::settingsUI);
 	settingsTab = BH::uiTabs[0];
 	unsigned int Y = 12;
 	unsigned int col = 40;
