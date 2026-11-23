@@ -3,6 +3,7 @@
 #include "Colorhook.h"
 #include "../../Basic/Boxhook/Boxhook.h"
 #include "../../Basic/Framehook/Framehook.h"
+#include "../../Basic/Linehook/Linehook.h"
 #include "../../Basic/Texthook/Texthook.h"
 #include "../../Basic/Crosshook/Crosshook.h"
 
