@@ -119,6 +119,11 @@ void BH::Initialize()
 	});
 
 	settingsUI = new Drawing::UI(BH_VERSION, 400, 277);
+	uiTabs.push_back(new Drawing::UITab("Misc", settingsUI));
+	uiTabs.push_back(new Drawing::UITab("Item", settingsUI));
+	uiTabs.push_back(new Drawing::UITab("Interaction", settingsUI));
+	uiTabs.push_back(new Drawing::UITab("Maphack", settingsUI));
+	uiTabs.push_back(new Drawing::UITab("StashExport", settingsUI));
 
 	Task::InitializeThreadPool(2);
 

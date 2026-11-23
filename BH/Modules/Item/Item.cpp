@@ -191,7 +191,7 @@ void Item::ResetPatches() {
 }
 
 void Item::DrawSettings() {
-	settingsTab = new UITab("Item", BH::settingsUI);
+	settingsTab = BH::uiTabs[1];
 	int y = 10;
 	int keyhook_x = 230;
 

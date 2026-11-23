@@ -245,7 +245,7 @@ void Maphack::OnLoad() {
 	ResetPatches();*/
 	diabloDeadMessage->Install();
 
-	settingsTab = new UITab("Maphack", BH::settingsUI);
+	settingsTab = BH::uiTabs[3];
 
 	new Texthook(settingsTab, 80, 3, "Toggles");
 	unsigned int Y = 0;

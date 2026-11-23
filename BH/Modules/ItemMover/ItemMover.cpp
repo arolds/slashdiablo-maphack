@@ -379,7 +379,7 @@ void ItemMover::OnLoad() {
 	LoadConfig();
 	Drawing::Texthook* colored_text;
 
-	settingsTab = new Drawing::UITab("Interaction", BH::settingsUI);
+	settingsTab = BH::uiTabs[2];
 
 	unsigned int x = 8;
 	unsigned int y = 7;

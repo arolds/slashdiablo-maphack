@@ -20,7 +20,7 @@ using namespace Drawing;
 void StashExport::OnLoad() {
 	LoadConfig();
 
-	settingsTab = new UITab("StashExport", BH::settingsUI);
+	settingsTab = BH::uiTabs[4];
 
 	int y = 15;
 	new Checkhook(settingsTab, 4, y, &Toggles["Include Equipment"].state, "Include Equipment");

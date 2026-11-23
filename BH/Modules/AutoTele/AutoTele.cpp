@@ -19,6 +19,7 @@ void AutoTele::OnLoad() {
 	std::map<string, bool>* gamefilterBools(BH::GamefilterBools);
 
 	settingsTab = new UITab("Misc", BH::settingsUI);
+	settingsTab = BH::uiTabs[0];
 	unsigned int Y = 12;
 	unsigned int col = 40;
 
