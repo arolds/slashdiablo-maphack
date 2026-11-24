@@ -551,7 +551,7 @@ void ScreenInfo::OnDraw() {
 	delete [] level;
 
 	//DEV TOOLS
-	if (devTools) {
+	/*if (devTools) {
 		DWORD mouseX = *p_D2CLIENT_MouseX;
 		DWORD mouseY = *p_D2CLIENT_MouseY;
 		string str = to_string(mouseX) + ", " + to_string(mouseY);
@@ -561,8 +561,7 @@ void ScreenInfo::OnDraw() {
 
 		int screenX = *p_D2CLIENT_ScreenSizeX;
 		int screenY = *p_D2CLIENT_ScreenSizeY;
-		D2WIN_DrawFramedText(L"Testing!!", 2, screenY - 2, 0, 1);
-	}
+	}*/
 	
 }
 void ScreenInfo::OnOOGDraw() {
