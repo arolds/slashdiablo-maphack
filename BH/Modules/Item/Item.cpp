@@ -65,7 +65,7 @@ unsigned int Item::trackerPingLevelSetting = -1;
 int Item::statRangeColor = TextColor::DarkGreen;
 UnitAny* Item::viewingUnit;
 vector<ShopItem*> Item::shopItemList;
-vector<char*> Item::gambleHightlightList;
+vector<string> Item::gambleHightlightList;
 BYTE Item::gambleRefreshState = 0;
 UnitAny* Item::gambleNpc;
 BYTE Item::npcEntriesFlags = 0x00; //least significant bit will be se to 1 if npc has trade, bit to left of that will be set to 1 if npc has gamble.
@@ -388,15 +388,6 @@ void Item::OnLoop() {
 
 				shopItemList.push_back(item);
 			}
-			/*else if (shopInfo->dwShopType == 1) {
-				char* itemCode = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode;
-				for (int i = gambleHightlightList.size() - 1; i >= 0; i--) {
-					if (itemCode[0] == gambleHightlightList[i][0] && itemCode[1] == gambleHightlightList[i][1] && itemCode[2] == gambleHightlightList[i][2]) {
-						D2CLIENT_PlaySound(232);
-						break;
-					}
-				}
-			}*/
 		}
 		isPlayerShopping = true;
 	}
@@ -498,18 +489,15 @@ void Item::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
 				UnitAny* selectedItem = *p_D2CLIENT_SelectedInvItem;
 				if (!selectedItem)
 					return;
-				char* itemCode = D2COMMON_GetItemText(selectedItem->dwTxtFileNo)->szCode;
-				bool match = false;
-				for (int i = gambleHightlightList.size() - 1; i >= 0; i--) {
-					if (itemCode[0] == gambleHightlightList[i][0] && itemCode[1] == gambleHightlightList[i][1] && itemCode[2] == gambleHightlightList[i][2]) {
-						match = true;
-						gambleHightlightList.erase(gambleHightlightList.begin() + i);
-						break;
-					}
-				}
-				if (!match) {
-					gambleHightlightList.push_back(itemCode);
-				}
+				ItemText* txt = D2COMMON_GetItemText(selectedItem->dwTxtFileNo);
+				if (!txt) return;
+				string code(txt->szCode, 3);
+
+				auto it = std::find(gambleHightlightList.begin(), gambleHightlightList.end(), code);
+				if (it != gambleHightlightList.end())
+					gambleHightlightList.erase(it);
+				else
+					gambleHightlightList.push_back(code);
 				return;
 			}
 		}
@@ -1342,11 +1330,14 @@ void __stdcall Item::CustomDrawRectangle(UnitAny* pItem,  int x1, int y1, int x2
 			}
 			//gamble
 			else if (shopInfo->dwShopType == 1) {
-				char* itemCode = D2COMMON_GetItemText(pItem->dwTxtFileNo)->szCode;
-				for (int i = gambleHightlightList.size() - 1; i >= 0; i--) {
-					if (itemCode[0] == gambleHightlightList[i][0] && itemCode[1] == gambleHightlightList[i][1] && itemCode[2] == gambleHightlightList[i][2]) {
-						rectColor = 0x84;
-						break;
+				ItemText* txt = D2COMMON_GetItemText(pItem->dwTxtFileNo);
+				if (txt) {
+					const char* itemCode = txt->szCode;
+					for (const string& s : gambleHightlightList) {
+						if (s.compare(0, 3, itemCode, 3) == 0) {
+							rectColor = 0x84;
+							break;
+						}
 					}
 				}
 			}
@@ -1358,7 +1349,7 @@ void __stdcall Item::CustomDrawRectangle(UnitAny* pItem,  int x1, int y1, int x2
 void __fastcall Item::CustomDrawMenuText(const wchar_t* wStr, int xPos, int yPos, DWORD dwColor, DWORD dwUnk, DWORD boxRight)
 {
 	char* str = UnicodeToAnsi(wStr);
-	char* number = "";
+	const char* number = "";
 	if (strcmp(str, "trade/repair") == 0 || strcmp(str, "trade") == 0) {
 		number = "[1]";
 		npcEntriesFlags = npcEntriesFlags | 0x01;
@@ -1366,12 +1357,15 @@ void __fastcall Item::CustomDrawMenuText(const wchar_t* wStr, int xPos, int yPos
 		number = "[2]";
 		npcEntriesFlags = npcEntriesFlags | 0x10;
 	}
+	delete[] str;
 
 	D2WIN_DrawText(wStr, xPos, yPos, dwColor, dwUnk);
 	DWORD textSize = D2WIN_SetTextSize(0);
-	int textWidth = D2WIN_GetTextWidth(AnsiToUnicode(number));
-	D2WIN_DrawText(AnsiToUnicode(number), boxRight - textWidth - 3, yPos+1, TextColor::Gold, dwUnk);
+	const wchar_t* num = AnsiToUnicode(number);
+	int textWidth = D2WIN_GetTextWidth(num);
+	D2WIN_DrawText(num, boxRight - textWidth - 3, yPos+1, TextColor::Gold, dwUnk);
 	D2WIN_SetTextSize(textSize);
+	delete[] num;
 }
 /*
 	Search mod used in MagicPrefix.txt, UniqueItemsTxt, RunesTxt, etc. (index from Properties.txt) by ItemStatCost.txt stat index

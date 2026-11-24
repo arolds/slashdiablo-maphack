@@ -69,7 +69,7 @@ class Item : public Module {
 		static unsigned int trackerPingLevelSetting;
 		static int statRangeColor;
 		static vector<ShopItem*> shopItemList;
-		static vector<char*> gambleHightlightList;
+		static vector<string> gambleHightlightList;
 		static BYTE gambleRefreshState;
 		static UnitAny* gambleNpc;
 		static BYTE npcEntriesFlags;
