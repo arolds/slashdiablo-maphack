@@ -76,7 +76,6 @@ class Item : public Module {
 		BOOL isPlayerShopping;
 		unsigned int gambleRefresh;
 		unsigned int gambleSelect;
-		InventoryLayout *storeLayout;
 
 		void ResetPatches();
 	public:
@@ -93,7 +92,6 @@ class Item : public Module {
 		void OnGameJoin();
 
 		void OnLoop();
-		void OnDraw();
 		void OnKey(bool up, BYTE key, LPARAM lParam, bool* block);
 		void OnLeftClick(bool up, unsigned int x, unsigned int y, bool* block);
 		std::map<string, Toggle>* GetToggles() { return &Toggles; }

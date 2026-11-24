@@ -418,20 +418,6 @@ void Item::OnLoop() {
 
 }
 
-void Item::OnDraw() {
-	ShopInfo* shopInfo = p_D2CLIENT_ShopInfo;
-	//gamble
-	if (shopInfo->dwShopType == 1 && D2CLIENT_GetUIState(UI_NPCSHOP) > 0) {
-		storeLayout = p_D2CLIENT_StoreLayout;
-		unsigned int boxX = storeLayout->Left + 65;
-		unsigned int boxY = storeLayout->Top - 60;
-		unsigned int boxW = (storeLayout->Right + 10) - (storeLayout->Left + 65);
-		unsigned int boxH = (storeLayout->Top - 35) - (storeLayout->Top - 60);
-		Drawing::Framehook::Draw(boxX, boxY, boxW, boxH, 0, Drawing::BTOneHalf);
-		//D2GFX_DrawRectangle(storeLayout->Left + 65, storeLayout->Top - 60, storeLayout->Right + 10, storeLayout->Top - 35, 0, DRAW_MODE_NORMAL);
-	}
-}
-
 void Item::OnKey(bool up, BYTE key, LPARAM lParam, bool* block) {
 	if (key == showPlayer) {
 		*block = true;
