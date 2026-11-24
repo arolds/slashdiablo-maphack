@@ -64,7 +64,7 @@ unsigned int Item::pingLevelSetting = 0;
 unsigned int Item::trackerPingLevelSetting = -1;
 int Item::statRangeColor = TextColor::DarkGreen;
 UnitAny* Item::viewingUnit;
-vector<ShopItem*> Item::shopItemList;
+vector<ShopItem> Item::shopItemList;
 vector<string> Item::gambleHightlightList;
 BYTE Item::gambleRefreshState = 0;
 UnitAny* Item::gambleNpc;
@@ -382,10 +382,7 @@ void Item::OnLoop() {
 						break;
 					}
 				}
-				ShopItem* item = new ShopItem{};
-				item->pItem = pItem;
-				item->isMatch = isMatch;
-
+				ShopItem item = { pItem, isMatch };
 				shopItemList.push_back(item);
 			}
 		}
@@ -1322,7 +1319,7 @@ void __stdcall Item::CustomDrawRectangle(UnitAny* pItem,  int x1, int y1, int x2
 			//shop
 			if (shopInfo->dwShopType == 3) {
 				for (int i = 0; i < shopItemList.size(); i++) {
-					if (pItem == shopItemList[i]->pItem && shopItemList[i]->isMatch) {
+					if (pItem == shopItemList[i].pItem && shopItemList[i].isMatch) {
 						rectColor = 0x60;
 						break;
 					}

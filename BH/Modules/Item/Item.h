@@ -68,7 +68,7 @@ class Item : public Module {
 		static unsigned int pingLevelSetting;
 		static unsigned int trackerPingLevelSetting;
 		static int statRangeColor;
-		static vector<ShopItem*> shopItemList;
+		static vector<ShopItem> shopItemList;
 		static vector<string> gambleHightlightList;
 		static BYTE gambleRefreshState;
 		static UnitAny* gambleNpc;
