@@ -38,8 +38,6 @@ void Bnet::OnLoad() {
 	*keepDesc = true;
 
 	prefServer = &ints["Preferred Server"];
-	*prefServer = true;
-
 
 	failToJoin = 4000;
 	LoadConfig();
