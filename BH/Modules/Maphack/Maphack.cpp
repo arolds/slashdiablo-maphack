@@ -765,7 +765,7 @@ void Maphack::OnAutomapDraw() {
 
 void Maphack::OnGameJoin() {
 	ResetRevealed();
-	TileHeader* pAct4LavaTilesHeader = nullptr;
+	pAct4LavaTilesHeader = nullptr;
 	prevA4LavaColor = a4LavaColor;
 	automapLevels.clear();
 	*p_D2CLIENT_AutomapOn = Toggles["Show Automap On Join"].state;
