@@ -104,10 +104,10 @@ void Bnet::OnGameJoin() {
 	else
 		lastPass = "";
 	
-	if ( strlen((*p_D2LAUNCH_BnData)->szGameDesc) > 0)
-		lastDesc = (*p_D2LAUNCH_BnData)->szGameDesc;
-	else
-		lastDesc = "";
+	//if ( strlen((*p_D2LAUNCH_BnData)->szGameDesc) > 0)
+	//	lastDesc = (*p_D2LAUNCH_BnData)->szGameDesc;
+	//else
+	//	lastDesc = "";
 
 	RemovePatches();
 }
