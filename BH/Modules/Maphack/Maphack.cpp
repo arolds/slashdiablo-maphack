@@ -42,6 +42,7 @@ TileHeader* Maphack::pAct4LavaTilesHeader = nullptr;
 unsigned int Maphack::a4LavaColor;
 vector<Maphack::LavaBlockBackup> Maphack::g_LavaBlocks;
 std::vector<Maphack::OriginalLavaBlock> Maphack::originalLavaBlocks;
+ULONGLONG Maphack::portalTimer;
 
 DrawDirective automapDraw(true, 5);
 
@@ -404,7 +405,7 @@ void Maphack::OnLoop() {
 		prevLavaEnabled = isEnabled;
 		ApplyAct4LavaColor(isEnabled);
 	}
-	
+
 	if (!Toggles["Auto Reveal"].state)
 		return;
 	

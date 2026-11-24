@@ -45,7 +45,7 @@ class Maphack : public Module {
 		static vector<OriginalLavaBlock> originalLavaBlocks;
 		
 
-		ULONGLONG portalTimer;
+		static ULONGLONG portalTimer;
 		unsigned int revealType;
 		unsigned int maxGhostSelection;
 		unsigned int reloadConfig;
@@ -100,7 +100,7 @@ class Maphack : public Module {
 	static void __stdcall CustomDrawDropBackdrop(UnitAny* pItem, const wchar_t* wStr, int x, int y, DWORD dwRectColor, DWORD dwTrans, DWORD dwColor);
 	static void __stdcall CustomTileLoad(DWORD* outputPtr, char* fileName);
 	static void ApplyAct4LavaColor(bool isEnabled);
-	int CanUsePortal();
+	static int CanUsePortal();
 	void RestoreAct4LavaPointers();
 };
 
